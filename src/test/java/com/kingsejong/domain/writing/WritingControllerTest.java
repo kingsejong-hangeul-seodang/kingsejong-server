@@ -37,6 +37,9 @@ class WritingControllerTest extends IntegrationTest {
     WritingRepository writingRepository;
 
     @Autowired
+    com.kingsejong.domain.user.repository.UserRepository userRepository;
+
+    @Autowired
     com.kingsejong.domain.content.repository.ContentRepository contentRepository;
 
     private static final String STROKE = "{\"points\":[[30,28,0,0.5],[30,70,80,0.5]]}";
@@ -275,7 +278,9 @@ class WritingControllerTest extends IntegrationTest {
                     .andExpect(jsonPath("$.code").value(code.name()));
         }
         flushAndClear();
-        assertThat(writingRepository.findAll()).filteredOn(w -> w.getStatus() == WritingStatus.FAILED).hasSize(2);
+        Long userId = userRepository.findByLoginCode("DGU-0001").orElseThrow().getId();
+        assertThat(writingRepository.findAll())
+                .filteredOn(w -> w.getUserId().equals(userId) && w.getStatus() == WritingStatus.FAILED).hasSize(2);
     }
 
     @Test

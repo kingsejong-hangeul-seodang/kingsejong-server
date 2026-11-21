@@ -19,6 +19,7 @@ import com.kingsejong.global.error.ErrorResponse;
 import com.kingsejong.infra.engine.EngineClient;
 import com.kingsejong.infra.engine.EngineGradeRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -32,6 +33,7 @@ import java.util.List;
  * 2. 엔진 호출 (트랜잭션 밖)
  * 3. 판정 저장 + 보상 (트랜잭션)
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WritingService {
@@ -76,8 +78,14 @@ public class WritingService {
         } catch (RuntimeException e) {
             // 엔진 오류든 예상 밖 오류든 원본은 남기고 FAILED로 표시한다.
             // (서버가 엔진 호출 중에 꺼지면 PENDING으로 남는다. 오래된 PENDING은 판정 전 기록으로 보고 무시한다)
-            transactionTemplate.executeWithoutResult(status ->
-                    writingRepository.findById(saved.getId()).ifPresent(Writing::failed));
+            try {
+                transactionTemplate.executeWithoutResult(status ->
+                        writingRepository.findById(saved.getId()).ifPresent(Writing::failed));
+            } catch (RuntimeException markFailed) {
+                // FAILED 표시가 실패해도 원래 오류(503·504 등)를 그대로 돌려준다
+                log.error("Failed to mark writing {} as FAILED", saved.getId(), markFailed);
+                e.addSuppressed(markFailed);
+            }
             throw e;
         }
 
