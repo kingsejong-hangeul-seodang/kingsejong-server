@@ -1,0 +1,42 @@
+package com.kingsejong.support;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 통합 테스트 공통. 실제 PostgreSQL(Testcontainers) + 시드 데이터(seed/*.json).
+ * 테스트마다 롤백되므로 시드 계정을 마음대로 바꿔도 된다.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
+@Transactional
+public abstract class IntegrationTest {
+
+    @Autowired
+    protected MockMvc mockMvc;
+
+    @Autowired
+    protected ObjectMapper objectMapper;
+
+    /** 시드 계정으로 로그인하고 "Bearer <토큰>"을 돌려준다. */
+    protected String bearer(String loginCode) throws Exception {
+        String body = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + loginCode + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return "Bearer " + objectMapper.readTree(body).get("accessToken").asText();
+    }
+}

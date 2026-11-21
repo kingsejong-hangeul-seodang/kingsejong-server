@@ -1,0 +1,42 @@
+[
+  {
+    "name": "동국",
+    "loginCode": "DGU-0001",
+    "locale": "ko",
+    "experience": "first",
+    "stage": "beginner",
+    "lastMode": "kpop",
+    "consentAgreed": true,
+    "onboardingCompleted": true
+  },
+  {
+    "name": "중수",
+    "loginCode": "DGU-0002",
+    "locale": "ko",
+    "experience": "studied",
+    "stage": "intermediate",
+    "lastMode": "kpop",
+    "consentAgreed": true,
+    "onboardingCompleted": true
+  },
+  {
+    "name": "고수",
+    "loginCode": "DGU-0003",
+    "locale": "en",
+    "experience": "studied",
+    "stage": "advanced",
+    "lastMode": "basic",
+    "consentAgreed": false,
+    "onboardingCompleted": true
+  },
+  {
+    "name": "새내기",
+    "loginCode": "DGU-0004",
+    "locale": "ko",
+    "experience": null,
+    "stage": null,
+    "lastMode": null,
+    "consentAgreed": false,
+    "onboardingCompleted": false
+  }
+]

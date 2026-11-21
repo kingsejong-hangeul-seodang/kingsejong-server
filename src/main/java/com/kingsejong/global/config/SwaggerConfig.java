@@ -1,15 +1,21 @@
 package com.kingsejong.global.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * Swagger UI: 서버 실행 후 http://localhost:8080/swagger-ui.html
+ * 로그인 응답의 accessToken을 오른쪽 위 [Authorize]에 넣으면 인증이 필요한 주소도 호출할 수 있다.
  */
 @Configuration
 public class SwaggerConfig {
+
+    private static final String BEARER = "bearerAuth";
 
     @Bean
     public OpenAPI openAPI() {
@@ -17,6 +23,11 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("킹세종 한글서당 API")
                         .description("kingsejong-server API 명세")
-                        .version("v1"));
+                        .version("v1"))
+                .components(new Components().addSecuritySchemes(BEARER, new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")))
+                .addSecurityItem(new SecurityRequirement().addList(BEARER));
     }
 }
