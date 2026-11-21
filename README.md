@@ -22,6 +22,15 @@ docker compose up -d --wait
 - 헬스체크: http://localhost:8080/api/v1/health
 - Swagger UI: http://localhost:8080/swagger-ui.html
 
+쓰기 제출(채점)에는 교정 엔진([Python-correction-engine](https://github.com/kingsejong-hangeul-seodang/Python-correction-engine))이 `localhost:8000`에 떠 있어야 합니다. 엔진 레포에서:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn app.main:app --port 8000
+```
+
+다른 주소면 환경 변수 `ENGINE_BASE_URL`로 바꿉니다.
+
 ## 폴더 구조
 
 ```
@@ -33,7 +42,8 @@ src/main/java/com/kingsejong
 │       ├── repository
 │       ├── entity
 │       └── dto
-└── global          # 공통 설정, 오류 처리, 헬스체크
+├── global          # 공통 설정, 인증, 오류 처리, 시드, 헬스체크
+└── infra           # 외부 시스템 연동 (교정 엔진)
 ```
 
 ## 협업 컨벤션

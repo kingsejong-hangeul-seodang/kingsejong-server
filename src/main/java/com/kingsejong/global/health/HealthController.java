@@ -1,23 +1,38 @@
 package com.kingsejong.global.health;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.kingsejong.infra.engine.EngineClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 /**
- * 배포 확인용 헬스체크 (인증 없음).
- * 교정 엔진 상태(engine)는 엔진 연동 이슈에서 추가한다. DB 포함 상세 상태는 /actuator/health.
+ * 배포 확인용 헬스체크 (인증 없음, API 명세 3.16). DB 포함 상세 상태는 /actuator/health.
+ * 엔진에 연결이 안 돼도 HTTP는 200이고 engine.status만 "down".
  */
 @Tag(name = "Health", description = "서버 상태 확인")
 @RestController
+@RequiredArgsConstructor
 public class HealthController {
 
-    @Operation(summary = "헬스체크", description = "서버가 살아 있는지 확인한다.")
+    private final EngineClient engineClient;
+
+    public record HealthResponse(String status, EngineStatus engine) {
+    }
+
+    /** engineVersion이 "-stub"으로 끝나면 엔진이 임시 응답(모든 칸 맞음)을 주는 중. */
+    public record EngineStatus(String status, String engineVersion) {
+    }
+
+    @Operation(summary = "헬스체크", description = "서버와 교정 엔진이 살아 있는지 확인한다.")
     @GetMapping("/api/v1/health")
-    public Map<String, String> health() {
-        return Map.of("status", "ok");
+    public HealthResponse health() {
+        JsonNode engine = engineClient.health();
+        EngineStatus engineStatus = engine != null
+                ? new EngineStatus("ok", engine.path("engineVersion").asText(null))
+                : new EngineStatus("down", null);
+        return new HealthResponse("ok", engineStatus);
     }
 }
