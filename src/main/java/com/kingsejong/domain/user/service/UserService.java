@@ -6,6 +6,7 @@ import com.kingsejong.domain.user.dto.response.LoginResponse;
 import com.kingsejong.domain.user.dto.response.MeResponse;
 import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.repository.UserRepository;
+import com.kingsejong.domain.writing.service.WritingStatsService;
 import com.kingsejong.global.auth.JwtProvider;
 import com.kingsejong.global.common.KstDate;
 import com.kingsejong.global.error.BusinessException;
@@ -14,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -21,6 +24,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
+    private final WritingStatsService writingStatsService;
 
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByLoginCode(request.code().trim())
@@ -64,7 +68,7 @@ public class UserService {
     }
 
     private MeResponse toMe(User user) {
-        // today.done(오늘 맞게 쓴 콘텐츠 수)은 쓰기 제출(#7)에서 채운다
-        return MeResponse.of(user, KstDate.today(), 0);
+        LocalDate today = KstDate.today();
+        return MeResponse.of(user, today, writingStatsService.countTodayCorrectContents(user.getId(), today));
     }
 }

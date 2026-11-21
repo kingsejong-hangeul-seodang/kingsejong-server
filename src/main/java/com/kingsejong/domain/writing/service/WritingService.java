@@ -1,0 +1,126 @@
+package com.kingsejong.domain.writing.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kingsejong.domain.content.service.ContentService;
+import com.kingsejong.domain.content.service.WritingTarget;
+import com.kingsejong.domain.user.entity.User;
+import com.kingsejong.domain.user.service.UserService;
+import com.kingsejong.domain.writing.dto.request.WritingCreateRequest;
+import com.kingsejong.domain.writing.dto.response.WritingResponse;
+import com.kingsejong.domain.writing.entity.Writing;
+import com.kingsejong.domain.writing.repository.WritingRepository;
+import com.kingsejong.global.common.KstDate;
+import com.kingsejong.global.common.Stage;
+import com.kingsejong.global.error.BusinessException;
+import com.kingsejong.global.error.ErrorCode;
+import com.kingsejong.global.error.ErrorResponse;
+import com.kingsejong.infra.engine.EngineClient;
+import com.kingsejong.infra.engine.EngineGradeRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.List;
+
+/**
+ * 쓰기 제출 (API 명세 3.8 "서버가 하는 일").
+ *
+ * 엔진 호출(최대 10초) 동안 DB 트랜잭션을 잡고 있지 않도록 세 단계로 나눈다.
+ * 1. 저장 (트랜잭션): 필기 원본을 먼저 저장 → 엔진이 실패해도 원본이 남는다
+ * 2. 엔진 호출 (트랜잭션 밖)
+ * 3. 판정 저장 (트랜잭션)
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class WritingService {
+
+    private final WritingRepository writingRepository;
+    private final UserService userService;
+    private final ContentService contentService;
+    private final EngineClient engineClient;
+    private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
+
+    public WritingResponse submit(Long userId, WritingCreateRequest request) {
+        User user = userService.getUser(userId);
+        WritingTarget target = contentService.getWritingTarget(request.contentId(), request.stage());
+        checkCells(request.stage(), target.target(), request.cells());
+
+        JsonNode canvas = objectMapper.valueToTree(request.canvas());
+        JsonNode cells = objectMapper.valueToTree(request.cells());
+
+        // 1. 저장. 기록 수집에 동의하지 않았으면 필기 원본은 남기지 않는다
+        Writing saved = transactionTemplate.execute(status -> writingRepository.save(Writing.builder()
+                .userId(userId)
+                .contentId(target.contentId())
+                .stage(request.stage())
+                .target(target.target())
+                .studyDate(KstDate.today())
+                .canvas(user.isConsentAgreed() ? canvas : null)
+                .cells(user.isConsentAgreed() ? cells : null)
+                .build()));
+
+        // 2. 엔진 호출. sessionId에 writingId를 넣어 엔진 로그와 맞춘다
+        JsonNode grade;
+        try {
+            grade = engineClient.grade(new EngineGradeRequest(
+                    String.valueOf(saved.getId()),
+                    request.stage().getCode(),
+                    target.target(),
+                    user.getLocale().getCode(),
+                    canvas,
+                    cells));
+        } catch (RuntimeException e) {
+            // 엔진 오류든 예상 밖 오류든 원본은 남기고 FAILED로 표시한다.
+            // (서버가 엔진 호출 중에 꺼지면 PENDING으로 남는다. 오래된 PENDING은 판정 전 기록으로 보고 무시한다)
+            try {
+                transactionTemplate.executeWithoutResult(status ->
+                        writingRepository.findById(saved.getId()).ifPresent(Writing::failed));
+            } catch (RuntimeException markFailed) {
+                // FAILED 표시가 실패해도 원래 오류(503·504 등)를 그대로 돌려준다
+                log.error("Failed to mark writing {} as FAILED", saved.getId(), markFailed);
+                e.addSuppressed(markFailed);
+            }
+            throw e;
+        }
+
+        // 3. 판정 저장
+        Writing graded = transactionTemplate.execute(status -> {
+            Writing writing = writingRepository.findById(saved.getId()).orElseThrow();
+            writing.graded(grade);
+            return writing;
+        });
+        return WritingResponse.of(graded, target.nextContentId());
+    }
+
+    /**
+     * 칸 번호와 칸 수를 엔진과 같은 규칙으로 미리 검사한다 (엔진 app/schemas.py GradeRequest).
+     * 엔진에서 걸리면 502가 되므로 서버에서 422로 막는다.
+     * - index는 0부터 빠짐없이 순서대로
+     * - 초보·중수: 칸 수 = 정답에서 공백을 뺀 글자 수 / 고수: 칸 수 ≥ 정답 칸 수(띄어쓰기 포함)
+     */
+    private static void checkCells(Stage stage, String target, List<WritingCreateRequest.Cell> cells) {
+        for (int i = 0; i < cells.size(); i++) {
+            if (cells.get(i).index() != i) {
+                throw invalid("cells[" + i + "].index", "index는 0부터 빠짐없이 순서대로 와야 해요");
+            }
+        }
+        if (stage == Stage.ADVANCED) {
+            if (cells.size() < target.length()) {
+                throw invalid("cells", "칸이 " + target.length() + "개 이상이어야 해요");
+            }
+        } else {
+            int need = target.replace(" ", "").length();
+            if (cells.size() != need) {
+                throw invalid("cells", "칸이 " + need + "개여야 해요");
+            }
+        }
+    }
+
+    private static BusinessException invalid(String field, String message) {
+        return new BusinessException(ErrorCode.INVALID_REQUEST, List.of(new ErrorResponse.Detail(field, message)));
+    }
+}
