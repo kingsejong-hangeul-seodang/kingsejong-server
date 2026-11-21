@@ -70,6 +70,12 @@ public class ContentTask {
         this.title = title;
     }
 
+    void update(String target, String meaning, String title) {
+        this.target = target;
+        this.meaning = meaning;
+        this.title = title;
+    }
+
     void assignContent(Content content) {
         this.content = content;
     }

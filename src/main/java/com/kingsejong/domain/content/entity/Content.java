@@ -22,6 +22,7 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 콘텐츠 하나 (K팝 곡의 한 구간, K드라마 한 장면, 기본 연습 한 주제).
@@ -37,6 +38,10 @@ public class Content extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** 시드 JSON의 key. 서버가 켜질 때 이 키로 찾아서 있으면 덮어쓰고 없으면 만든다. */
+    @Column(name = "seed_key", unique = true, length = 50)
+    private String seedKey;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -86,9 +91,10 @@ public class Content extends BaseTimeEntity {
     private List<ContentTask> tasks = new ArrayList<>();
 
     @Builder
-    private Content(Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
+    private Content(String seedKey, Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
                     String youtubeVideoId, Double startSec, Double endSec, boolean embeddable,
                     String situation, int sortOrder) {
+        this.seedKey = seedKey;
         this.mode = mode;
         this.kind = kind;
         this.title = title;
@@ -100,6 +106,40 @@ public class Content extends BaseTimeEntity {
         this.embeddable = embeddable;
         this.situation = situation;
         this.sortOrder = sortOrder;
+    }
+
+    /** 시드로 내용을 덮어쓴다 (seedKey는 그대로). */
+    public void update(Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
+                       String youtubeVideoId, Double startSec, Double endSec, boolean embeddable,
+                       String situation, int sortOrder) {
+        this.mode = mode;
+        this.kind = kind;
+        this.title = title;
+        this.source = source;
+        this.thumbnailUrl = thumbnailUrl;
+        this.youtubeVideoId = youtubeVideoId;
+        this.startSec = startSec;
+        this.endSec = endSec;
+        this.embeddable = embeddable;
+        this.situation = situation;
+        this.sortOrder = sortOrder;
+    }
+
+    public void replaceLines(List<ContentLine> newLines) {
+        lines.clear();
+        newLines.forEach(this::addLine);
+    }
+
+    /** 그 난이도의 쓸 글을 고치거나(있으면) 새로 넣는다(없으면). */
+    public void putTask(Stage stage, String target, String meaning, String title) {
+        taskOf(stage).ifPresentOrElse(
+                task -> task.update(target, meaning, title),
+                () -> addTask(ContentTask.builder().stage(stage).target(target).meaning(meaning).title(title).build()));
+    }
+
+    /** 시드에서 빠진 난이도의 쓸 글을 지운다. */
+    public void retainTasks(Set<Stage> stages) {
+        tasks.removeIf(task -> !stages.contains(task.getStage()));
     }
 
     public void addLine(ContentLine line) {

@@ -94,6 +94,8 @@ class ContentControllerTest extends IntegrationTest {
                 .andExpect(jsonPath("$.task.writeMode").value("dictation"))
                 .andExpect(jsonPath("$.task.target").value("잘 먹겠습니다"))
                 .andExpect(jsonPath("$.task.cellCount").value(9))
+                .andExpect(jsonPath("$.task.wordGroups[0]").value(1))
+                .andExpect(jsonPath("$.task.wordGroups[1]").value(5))
                 .andExpect(jsonPath("$.task.meaning").isEmpty())
                 .andExpect(jsonPath("$.task.speech.text").value("잘 먹겠습니다"))
                 .andExpect(jsonPath("$.task.speech.lang").value("ko-KR"));
@@ -146,6 +148,34 @@ class ContentControllerTest extends IntegrationTest {
     void mode가_없으면_422() throws Exception {
         mockMvc.perform(get("/api/v1/contents").header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001")))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void 중간_콘텐츠의_nextContentId는_같은_모드의_다음_콘텐츠다() throws Exception {
+        String token = bearer("DGU-0001");
+        JsonNode items = objectMapper.readTree(mockMvc.perform(get("/api/v1/contents")
+                        .param("mode", "kpop").param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andReturn().getResponse().getContentAsString()).get("items");
+
+        mockMvc.perform(get("/api/v1/contents/{id}", items.get(0).get("id").asLong()).param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.nextContentId").value(items.get(1).get("id").asLong()));
+    }
+
+    @Test
+    void 자막은_순서대로_준다() throws Exception {
+        String token = bearer("DGU-0001");
+        mockMvc.perform(get("/api/v1/contents/{id}", firstContentId(token, "kpop", "beginner")).param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.lines[0].text").value("바다 위 별빛 아래"))
+                .andExpect(jsonPath("$.lines[1].text").value("우리 함께 걸어요"));
+    }
+
+    @Test
+    void 토큰이_없으면_401() throws Exception {
+        mockMvc.perform(get("/api/v1/contents").param("mode", "kpop"))
+                .andExpect(status().isUnauthorized());
     }
 
     private long firstContentId(String token, String mode, String stage) throws Exception {
