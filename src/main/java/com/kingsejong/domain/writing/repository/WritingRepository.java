@@ -19,6 +19,14 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
             """)
     long countCorrectContentsOn(@Param("userId") Long userId, @Param("date") LocalDate date);
 
+    /** 그날 같은 콘텐츠·난이도로 이미 받은 경험치 합 (하루 최대 15 계산용). */
+    @Query("""
+            select coalesce(sum(w.expGained), 0) from Writing w
+            where w.userId = :userId and w.contentId = :contentId and w.stage = :stage and w.studyDate = :date
+            """)
+    int sumExpGainedOn(@Param("userId") Long userId, @Param("contentId") Long contentId,
+                       @Param("stage") Stage stage, @Param("date") LocalDate date);
+
     /** 이 난이도로 맞게 쓴 적이 있는 콘텐츠와, 그중 perfect가 한 번이라도 있었는지. [contentId, perfect] */
     @Query("""
             select w.contentId, max(case when w.perfect = true then 1 else 0 end) from Writing w
