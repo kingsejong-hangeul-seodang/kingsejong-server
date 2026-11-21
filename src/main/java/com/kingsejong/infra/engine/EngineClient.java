@@ -82,7 +82,8 @@ public class EngineClient {
     public JsonNode health() {
         try {
             return healthClient.get().uri("/health").retrieve().body(JsonNode.class);
-        } catch (RestClientException e) {
+        } catch (RuntimeException e) {
+            // 헬스체크는 어떤 이유로든 실패하면 down (명세상 /health는 항상 200)
             log.warn("Engine health check failed: {}", e.getMessage());
             return null;
         }
