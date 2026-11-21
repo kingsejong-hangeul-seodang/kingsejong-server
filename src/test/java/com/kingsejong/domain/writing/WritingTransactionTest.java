@@ -49,11 +49,17 @@ class WritingTransactionTest extends IntegrationTest {
     @Autowired
     UserRepository userRepository;
 
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @AfterEach
     void cleanUp() {
         User user = userRepository.findByLoginCode(LOGIN).orElseThrow();
         user.changeConsent(false); // 시드 값으로 되돌림
         userRepository.save(user);
+        // 보상(#8)으로 커밋된 경험치·연속 학습도 되돌림 (다른 테스트로 새지 않게)
+        jdbcTemplate.update("update users set exp = 0, streak_days = 0, last_study_date = null, correct_streak = 0"
+                + " where login_code = ?", LOGIN);
         Long userId = user.getId();
         writingRepository.deleteAll(writingRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(userId)).toList());
