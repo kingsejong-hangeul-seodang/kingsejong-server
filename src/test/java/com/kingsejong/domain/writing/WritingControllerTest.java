@@ -66,8 +66,10 @@ class WritingControllerTest extends IntegrationTest {
         assertThat(sent.getValue().locale()).isEqualTo("ko");
         assertThat(sent.getValue().cells().get(0).get("strokes").get(0).get("points").get(1).get(2).asDouble()).isEqualTo(80);
 
+        flushAndClear(); // 영속성 컨텍스트가 아니라 DB에 저장된 값으로 확인
         Writing saved = writingRepository.findById(writingId).orElseThrow();
         assertThat(saved.getStatus()).isEqualTo(WritingStatus.GRADED);
+        assertThat(saved.getGrade().get("sejong").get("text").asText()).isEqualTo("잘했어요");
         assertThat(saved.isPerfect()).isTrue();
         assertThat(saved.getCells()).isNotNull(); // DGU-0001은 기록 수집 동의
     }
