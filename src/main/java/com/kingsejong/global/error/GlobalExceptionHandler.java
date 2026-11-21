@@ -1,12 +1,12 @@
 package com.kingsejong.global.error;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.kingsejong.global.common.CodeEnum;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -58,6 +58,17 @@ public class GlobalExceptionHandler {
         return respond(ErrorCode.INVALID_REQUEST, ErrorResponse.of(ErrorCode.INVALID_REQUEST, details));
     }
 
+    /** @RequestParam·@PathVariable에 붙인 제약(@Min, @Positive 등) 위반 → 422 */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponse> handleMethodValidation(HandlerMethodValidationException e) {
+        List<ErrorResponse.Detail> details = e.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> new ErrorResponse.Detail(result.getMethodParameter().getParameterName(),
+                                error.getDefaultMessage() != null ? error.getDefaultMessage() : "올바르지 않은 값이에요")))
+                .toList();
+        return respond(ErrorCode.INVALID_REQUEST, ErrorResponse.of(ErrorCode.INVALID_REQUEST, details));
+    }
+
     /** 필수 쿼리 파라미터 없음 → 422 */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParam(MissingServletRequestParameterException e) {
@@ -73,12 +84,6 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
-        if (e.getCause() instanceof InvalidDefinitionException definition) {
-            // DTO 정의 실수 = 서버 버그. 클라이언트 탓 422로 보내지 않는다
-            log.error("Request DTO definition error", definition);
-            return respond(ErrorCode.INTERNAL_ERROR,
-                    ErrorResponse.of(ErrorCode.INTERNAL_ERROR, ErrorCode.INTERNAL_ERROR.getMessage()));
-        }
         if (e.getCause() instanceof JsonMappingException mapping) {
             String field = mapping.getPath().stream()
                     .map(ref -> ref.getFieldName() != null ? ref.getFieldName() : "[" + ref.getIndex() + "]")
