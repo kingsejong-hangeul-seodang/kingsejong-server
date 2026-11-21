@@ -1,0 +1,6 @@
+plugins {
+    // JDK 자동 다운로드 — 로컬에 JDK 21이 없어도 Gradle이 받아서 빌드함
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'kingsejong-server'

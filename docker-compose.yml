@@ -1,0 +1,28 @@
+# =====================================================================
+# 로컬 개발용 DB (앱은 IntelliJ / ./gradlew bootRun 으로 직접 띄운다)
+#   docker compose up -d --wait   → postgres 기동
+#   docker compose down -v        → DB 초기화 (볼륨 삭제, 다음 부팅 때 JPA 가 테이블을 다시 만듦)
+# .env 가 없어도 뜨도록 기본값 내장. 바꾸려면 .env.example 을 .env 로 복사해서 수정.
+# 호스트 포트 기본값은 5433 (다른 프로젝트의 5432 와 겹치지 않게)
+# =====================================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kingsejong-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-kingsejong}
+      POSTGRES_USER: ${DB_USER:-kingsejong}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-kingsejong1234}
+      TZ: Asia/Seoul
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - kingsejong_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kingsejong} -d ${DB_NAME:-kingsejong}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kingsejong_postgres_data:
