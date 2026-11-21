@@ -1,5 +1,6 @@
 package com.kingsejong.global.error;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -12,6 +13,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 전역 예외 처리. 컨트롤러에서 try-catch 하지 말고 예외를 던진다.
@@ -54,9 +56,21 @@ public class GlobalExceptionHandler {
         return respond(ErrorCode.INVALID_REQUEST, ErrorResponse.of(ErrorCode.INVALID_REQUEST, details));
     }
 
-    /** 깨진 JSON 등 읽을 수 없는 본문 → 400 */
+    /**
+     * 읽을 수 없는 본문.
+     * - JSON 문법은 맞는데 값이 틀림 (정해진 값이 아닌 "stage": "expert", 숫자 자리에 문자 등) → 422, details에 위치
+     * - JSON 문법 자체가 깨짐 → 400
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
+        if (e.getCause() instanceof JsonMappingException mapping) {
+            String field = mapping.getPath().stream()
+                    .map(ref -> ref.getFieldName() != null ? ref.getFieldName() : "[" + ref.getIndex() + "]")
+                    .collect(Collectors.joining(".")).replace(".[", "[");
+            List<ErrorResponse.Detail> details = List.of(new ErrorResponse.Detail(
+                    field.isEmpty() ? null : field, "올바른 값이 아니에요"));
+            return respond(ErrorCode.INVALID_REQUEST, ErrorResponse.of(ErrorCode.INVALID_REQUEST, details));
+        }
         log.warn("Malformed request body: {}", e.getMessage());
         return respond(ErrorCode.INVALID_JSON, ErrorResponse.of(ErrorCode.INVALID_JSON, ErrorCode.INVALID_JSON.getMessage()));
     }
