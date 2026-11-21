@@ -10,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class HealthControllerTest extends IntegrationTest {
 
     @Test
-    void 헬스체크는_토큰_없이_200과_ok를_준다() throws Exception {
+    void 엔진이_꺼져_있어도_200이고_engine_status만_down() throws Exception {
+        // test 프로필의 엔진 주소는 닫힌 포트 (application.yml)
         mockMvc.perform(get("/api/v1/health"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ok"));
+                .andExpect(jsonPath("$.status").value("ok"))
+                .andExpect(jsonPath("$.engine.status").value("down"))
+                .andExpect(jsonPath("$.engine.engineVersion").isEmpty());
     }
 }
