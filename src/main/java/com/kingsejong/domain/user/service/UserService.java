@@ -13,6 +13,7 @@ import com.kingsejong.global.error.BusinessException;
 import com.kingsejong.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -65,7 +66,7 @@ public class UserService {
      * 사용자 행을 잠그고 읽는다. 호출한 트랜잭션이 끝날 때까지 같은 사용자의 다른 보상 계산은 기다린다.
      * 그 트랜잭션에서 사용자를 처음 읽는 호출이어야 잠금 후의 최신 값을 본다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY) // 바깥 트랜잭션 없이 부르면 잠금이 바로 풀리므로 막는다
     public User getUserForUpdate(Long userId) {
         return userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));

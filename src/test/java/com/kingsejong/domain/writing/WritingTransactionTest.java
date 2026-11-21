@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import com.kingsejong.domain.writing.service.RewardService;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -32,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,6 +53,9 @@ class WritingTransactionTest extends IntegrationTest {
 
     @MockitoBean
     EngineClient engineClient;
+
+    @MockitoSpyBean
+    RewardService rewardService;
 
     @Autowired
     WritingRepository writingRepository;
@@ -133,14 +139,17 @@ class WritingTransactionTest extends IntegrationTest {
         int expBefore = ((Number) userSnapshot.get("exp")).intValue();
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
-        List<Future<Integer>> results = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            results.add(pool.submit(() -> submit().andReturn().getResponse().getStatus()));
+        try {
+            List<Future<Integer>> results = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                results.add(pool.submit(() -> submit().andReturn().getResponse().getStatus()));
+            }
+            for (Future<Integer> result : results) {
+                assertThat(result.get(20, TimeUnit.SECONDS)).isEqualTo(201);
+            }
+        } finally {
+            pool.shutdownNow();
         }
-        for (Future<Integer> result : results) {
-            assertThat(result.get(20, TimeUnit.SECONDS)).isEqualTo(201);
-        }
-        pool.shutdown();
 
         Long userId = userRepository.findByLoginCode(LOGIN).orElseThrow().getId();
         int gainedSum = writingRepository.findAll().stream()
@@ -148,6 +157,22 @@ class WritingTransactionTest extends IntegrationTest {
         int expAfter = userRepository.findByLoginCode(LOGIN).orElseThrow().getExp();
         assertThat(gainedSum).isEqualTo(15);
         assertThat(expAfter - expBefore).isEqualTo(gainedSum);
+    }
+
+    @Test
+    void 보상_계산이_실패하면_판정도_같이_롤백되고_FAILED로_남는다() throws Exception {
+        when(engineClient.grade(any())).thenReturn(objectMapper.readTree("{\"correct\":true,\"perfect\":true,\"cells\":[]}"));
+        doThrow(new IllegalStateException("reward boom")).when(rewardService).reward(any());
+        int expBefore = ((Number) userSnapshot.get("exp")).intValue();
+
+        submit().andExpect(status().isInternalServerError());
+
+        Long userId = userRepository.findByLoginCode(LOGIN).orElseThrow().getId();
+        Writing failed = writingRepository.findAll().stream()
+                .filter(w -> w.getUserId().equals(userId)).findFirst().orElseThrow();
+        assertThat(failed.getStatus()).isEqualTo(WritingStatus.FAILED);
+        assertThat(failed.getGrade()).isNull();
+        assertThat(userRepository.findByLoginCode(LOGIN).orElseThrow().getExp()).isEqualTo(expBefore);
     }
 
     private org.springframework.test.web.servlet.ResultActions submit() throws Exception {
