@@ -1,5 +1,6 @@
 package com.kingsejong.domain.writing;
 
+import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.repository.UserRepository;
 import com.kingsejong.domain.writing.entity.Writing;
 import com.kingsejong.domain.writing.entity.WritingStatus;
@@ -50,7 +51,10 @@ class WritingTransactionTest extends IntegrationTest {
 
     @AfterEach
     void cleanUp() {
-        Long userId = userRepository.findByLoginCode(LOGIN).orElseThrow().getId();
+        User user = userRepository.findByLoginCode(LOGIN).orElseThrow();
+        user.changeConsent(false); // 시드 값으로 되돌림
+        userRepository.save(user);
+        Long userId = user.getId();
         writingRepository.deleteAll(writingRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(userId)).toList());
     }
@@ -70,6 +74,9 @@ class WritingTransactionTest extends IntegrationTest {
 
     @Test
     void 엔진이_실패해도_원본은_커밋되어_FAILED로_남는다() throws Exception {
+        User user = userRepository.findByLoginCode(LOGIN).orElseThrow();
+        user.changeConsent(true); // 원본(canvas·cells)이 저장되는 계정으로
+        userRepository.save(user);
         when(engineClient.grade(any())).thenThrow(new BusinessException(ErrorCode.ENGINE_TIMEOUT));
 
         submit().andExpect(status().isGatewayTimeout());
@@ -79,6 +86,8 @@ class WritingTransactionTest extends IntegrationTest {
         assertThat(mine).hasSize(1);
         assertThat(mine.get(0).getStatus()).isEqualTo(WritingStatus.FAILED);
         assertThat(mine.get(0).getGrade()).isNull();
+        assertThat(mine.get(0).getCells()).isNotNull();
+        assertThat(mine.get(0).getCanvas()).isNotNull();
     }
 
     @Test
