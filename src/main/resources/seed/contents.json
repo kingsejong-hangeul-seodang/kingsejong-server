@@ -1,0 +1,192 @@
+[
+  {
+    "key": "kpop-starlight",
+    "mode": "kpop",
+    "kind": "clip",
+    "title": "별빛 아래",
+    "source": "하늘빛 - 별빛 아래",
+    "youtubeVideoId": "VIDEO_ID_01",
+    "startSec": 62,
+    "endSec": 88,
+    "embeddable": true,
+    "situation": "밤바다를 걸으며 부르는 노래",
+    "lines": [
+      {
+        "text": "바다 위 별빛 아래",
+        "startSec": 70.5,
+        "endSec": 74.0,
+        "translation": "Under the starlight above the sea"
+      },
+      {
+        "text": "우리 함께 걸어요",
+        "startSec": 74.0,
+        "endSec": 78.0,
+        "translation": "Let's walk together"
+      }
+    ],
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "바다",
+        "meaning": "sea"
+      },
+      {
+        "stage": "intermediate",
+        "target": "별빛 아래"
+      },
+      {
+        "stage": "advanced",
+        "target": "바다 위 별빛 아래"
+      }
+    ]
+  },
+  {
+    "key": "kpop-missed-you",
+    "mode": "kpop",
+    "kind": "clip",
+    "title": "보고 싶었어",
+    "source": "달무리 - 보고 싶었어",
+    "youtubeVideoId": "VIDEO_ID_02",
+    "startSec": 30,
+    "endSec": 55,
+    "embeddable": true,
+    "situation": "오랜만에 만난 친구에게 건네는 말",
+    "lines": [
+      {
+        "text": "오늘 보고 싶었어",
+        "startSec": 38.0,
+        "endSec": 42.5,
+        "translation": "I missed you today"
+      }
+    ],
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "오늘",
+        "meaning": "today"
+      },
+      {
+        "stage": "intermediate",
+        "target": "보고 싶었어"
+      },
+      {
+        "stage": "advanced",
+        "target": "오늘 보고 싶었어"
+      }
+    ]
+  },
+  {
+    "key": "kdrama-seodang-spring-1",
+    "mode": "kdrama",
+    "kind": "clip",
+    "title": "서당의 봄",
+    "source": "서당의 봄 1화",
+    "youtubeVideoId": "VIDEO_ID_03",
+    "startSec": 300,
+    "endSec": 325,
+    "embeddable": true,
+    "situation": "전학 온 친구에게 처음 건네는 말",
+    "lines": [
+      {
+        "text": "오늘부터 우리는 친구",
+        "startSec": 310.0,
+        "endSec": 314.0,
+        "translation": "From today, we are friends"
+      }
+    ],
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "친구",
+        "meaning": "friend"
+      },
+      {
+        "stage": "intermediate",
+        "target": "우리는 친구"
+      },
+      {
+        "stage": "advanced",
+        "target": "오늘부터 우리는 친구"
+      }
+    ]
+  },
+  {
+    "key": "basic-meal-1",
+    "mode": "basic",
+    "kind": "sentence",
+    "title": "식사 표현 1",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "밥",
+        "meaning": "rice, meal",
+        "title": "밥"
+      },
+      {
+        "stage": "intermediate",
+        "target": "잘 먹겠습니다"
+      },
+      {
+        "stage": "advanced",
+        "target": "잘 먹겠습니다"
+      }
+    ]
+  },
+  {
+    "key": "basic-travel-1",
+    "mode": "basic",
+    "kind": "sentence",
+    "title": "여행 표현 1",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "물",
+        "meaning": "water",
+        "title": "물"
+      },
+      {
+        "stage": "intermediate",
+        "target": "화장실은 어디예요?"
+      },
+      {
+        "stage": "advanced",
+        "target": "화장실은 어디예요?"
+      }
+    ]
+  },
+  {
+    "key": "basic-greeting-1",
+    "mode": "basic",
+    "kind": "sentence",
+    "title": "인사 표현 1",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "안녕",
+        "meaning": "hello",
+        "title": "안녕"
+      },
+      {
+        "stage": "intermediate",
+        "target": "만나서 반가워요"
+      },
+      {
+        "stage": "advanced",
+        "target": "처음 뵙겠습니다"
+      }
+    ]
+  },
+  {
+    "key": "jamo-digeut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㄷ · 디귿",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㄷ",
+        "meaning": "digeut"
+      }
+    ]
+  }
+]

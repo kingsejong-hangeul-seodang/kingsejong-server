@@ -22,6 +22,8 @@ docker compose up -d --wait
 - 헬스체크: http://localhost:8080/api/v1/health
 - Swagger UI: http://localhost:8080/swagger-ui.html
 
+콘텐츠는 `src/main/resources/seed/contents.json`이 원본입니다. 고치고 서버를 다시 켜면 반영되고, DB에서 직접 고친 값은 덮어써집니다.
+
 ## 폴더 구조
 
 ```
