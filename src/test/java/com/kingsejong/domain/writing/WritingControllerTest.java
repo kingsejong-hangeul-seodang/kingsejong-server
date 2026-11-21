@@ -18,6 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,9 @@ class WritingControllerTest extends IntegrationTest {
 
     @Autowired
     WritingRepository writingRepository;
+
+    @Autowired
+    com.kingsejong.domain.content.repository.ContentRepository contentRepository;
 
     private static final String STROKE = "{\"points\":[[30,28,0,0.5],[30,70,80,0.5]]}";
 
@@ -122,6 +126,7 @@ class WritingControllerTest extends IntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
 
+        flushAndClear();
         Writing saved = writingRepository.findById(objectMapper.readTree(body).get("writingId").asLong()).orElseThrow();
         assertThat(saved.getCanvas()).isNull();
         assertThat(saved.getCells()).isNull();
@@ -217,6 +222,107 @@ class WritingControllerTest extends IntegrationTest {
         mockMvc.perform(post("/api/v1/writings").contentType(MediaType.APPLICATION_JSON)
                         .content(submission(1, "beginner", 2)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 개수_상한을_넘거나_필수_값이_없으면_422() throws Exception {
+        String token = bearer("DGU-0001");
+        long contentId = firstContentId(token, "kpop", "beginner");
+        String point = "[1,2,3,0.5]";
+        String manyPoints = String.join(",", java.util.Collections.nCopies(2001, point));
+        String manyStrokes = String.join(",", java.util.Collections.nCopies(61, "{\"points\":[" + point + "]}"));
+
+        String[][] cases = {
+                {"cells", submission(contentId, "advanced", 31)},
+                {"cells[0].strokes", "{\"contentId\":" + contentId + ",\"stage\":\"beginner\",\"canvas\":{\"w\":288,\"h\":288},"
+                        + "\"cells\":[{\"index\":0,\"strokes\":[" + manyStrokes + "]},{\"index\":1,\"strokes\":[]}]}"},
+                {"cells[0].strokes[0].points", "{\"contentId\":" + contentId + ",\"stage\":\"beginner\",\"canvas\":{\"w\":288,\"h\":288},"
+                        + "\"cells\":[{\"index\":0,\"strokes\":[{\"points\":[" + manyPoints + "]}]},{\"index\":1,\"strokes\":[]}]}"},
+                {"canvas.w", "{\"contentId\":" + contentId + ",\"stage\":\"beginner\",\"canvas\":{\"w\":0,\"h\":288},"
+                        + "\"cells\":[{\"index\":0,\"strokes\":[]},{\"index\":1,\"strokes\":[]}]}"},
+                {"contentId", "{\"stage\":\"beginner\",\"canvas\":{\"w\":288,\"h\":288},"
+                        + "\"cells\":[{\"index\":0,\"strokes\":[]},{\"index\":1,\"strokes\":[]}]}"},
+        };
+        for (String[] c : cases) {
+            mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON).content(c[1]))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.details[0].field").value(c[0]));
+        }
+        verify(engineClient, never()).grade(any());
+    }
+
+    @Test
+    void 본문이_2MB를_넘으면_읽지_않고_422() throws Exception {
+        String huge = "{\"pad\":\"" + "x".repeat(2 * 1024 * 1024) + "\"}";
+        mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001"))
+                        .contentType(MediaType.APPLICATION_JSON).content(huge))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        verify(engineClient, never()).grade(any());
+    }
+
+    @Test
+    void 엔진이_502나_504를_주면_그대로_응답하고_FAILED로_남는다() throws Exception {
+        String token = bearer("DGU-0001");
+        long contentId = firstContentId(token, "kpop", "beginner");
+        for (ErrorCode code : new ErrorCode[]{ErrorCode.ENGINE_ERROR, ErrorCode.ENGINE_TIMEOUT}) {
+            doThrow(new BusinessException(code)).when(engineClient).grade(any());
+            mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(submission(contentId, "beginner", 2)))
+                    .andExpect(status().is(code.getStatus().value()))
+                    .andExpect(jsonPath("$.code").value(code.name()));
+        }
+        flushAndClear();
+        assertThat(writingRepository.findAll()).filteredOn(w -> w.getStatus() == WritingStatus.FAILED).hasSize(2);
+    }
+
+    @Test
+    void 중수는_공백_뺀_글자_수_고수는_정답_칸_수와_같으면_통과한다() throws Exception {
+        when(engineClient.grade(any())).thenReturn(grade(true, true));
+        String mid = bearer("DGU-0002");
+        mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, mid)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(submission(firstContentId(mid, "kpop", "intermediate"), "intermediate", 4))) // 별빛 아래
+                .andExpect(status().isCreated());
+
+        String pro = bearer("DGU-0003");
+        mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, pro)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(submission(firstContentId(pro, "basic", "advanced"), "advanced", 7))) // 잘 먹겠습니다
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void 다른_사람의_기록은_내_오늘_진행과_완료에_섞이지_않는다() throws Exception {
+        when(engineClient.grade(any())).thenReturn(grade(true, true));
+        String other = bearer("DGU-0002");
+        mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, other)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(submission(firstContentId(other, "kpop", "beginner"), "beginner", 2)))
+                .andExpect(status().isCreated());
+
+        String me = bearer("DGU-0001");
+        mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, me))
+                .andExpect(jsonPath("$.today.done").value(0));
+        mockMvc.perform(get("/api/v1/contents").param("mode", "kpop").param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, me))
+                .andExpect(jsonPath("$.items[0].completed").value(false));
+    }
+
+    @Test
+    void 숨긴_콘텐츠는_제출할_수_없다() throws Exception {
+        String token = bearer("DGU-0001");
+        long contentId = firstContentId(token, "kpop", "beginner");
+        contentRepository.findById(contentId).orElseThrow().deactivate();
+        flushAndClear();
+
+        mockMvc.perform(post("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(submission(contentId, "beginner", 2)))
+                .andExpect(status().isNotFound());
+        verify(engineClient, never()).grade(any());
     }
 
     // ===== 도우미 =====

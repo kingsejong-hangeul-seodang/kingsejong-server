@@ -73,7 +73,9 @@ public class WritingService {
                     user.getLocale().getCode(),
                     canvas,
                     cells));
-        } catch (BusinessException e) {
+        } catch (RuntimeException e) {
+            // 엔진 오류든 예상 밖 오류든 원본은 남기고 FAILED로 표시한다.
+            // (서버가 엔진 호출 중에 꺼지면 PENDING으로 남는다. 오래된 PENDING은 판정 전 기록으로 보고 무시한다)
             transactionTemplate.executeWithoutResult(status ->
                     writingRepository.findById(saved.getId()).ifPresent(Writing::failed));
             throw e;

@@ -53,9 +53,15 @@ public class ContentService {
         return ContentDetailResponse.of(content, task, findNextContentId(content, resolved));
     }
 
-    /** 쓰기 제출에서 정답 문장을 찾을 때. 콘텐츠가 없거나 그 난이도로 쓸 글이 없으면 404. */
+    /**
+     * 쓰기 제출에서 정답 문장을 찾을 때. 콘텐츠가 없거나, 숨긴(active = false) 콘텐츠거나, 그 난이도로 쓸 글이 없으면 404.
+     * 숨긴 콘텐츠도 상세는 열린다(지난 기록 화면용). 제출만 막는다.
+     */
     public WritingTarget getWritingTarget(Long contentId, Stage stage) {
         Content content = getContentEntity(contentId);
+        if (!content.isActive()) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "지금은 쓸 수 없는 콘텐츠예요");
+        }
         ContentTask task = getTask(content, stage);
         return new WritingTarget(content.getId(), task.getTarget(), findNextContentId(content, stage));
     }
