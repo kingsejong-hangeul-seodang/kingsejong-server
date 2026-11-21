@@ -83,6 +83,13 @@ public class Content extends BaseTimeEntity {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    /**
+     * 목록·다음 글에 보여 줄지. 시드 JSON에서 빠진 콘텐츠는 false가 된다.
+     * 쓰기 기록이 가리킬 수 있어서 지우지 않고 숨긴다. 상세는 지난 기록 화면을 위해 그대로 열린다.
+     */
+    @Column(nullable = false)
+    private boolean active = true;
+
     @OrderBy("sortOrder ASC")
     @OneToMany(mappedBy = "content", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ContentLine> lines = new ArrayList<>();
@@ -123,6 +130,11 @@ public class Content extends BaseTimeEntity {
         this.embeddable = embeddable;
         this.situation = situation;
         this.sortOrder = sortOrder;
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
     }
 
     public void replaceLines(List<ContentLine> newLines) {

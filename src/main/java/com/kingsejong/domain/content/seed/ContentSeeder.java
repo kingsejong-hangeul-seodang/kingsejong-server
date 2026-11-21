@@ -42,6 +42,7 @@ public class ContentSeeder implements ApplicationRunner {
     private static final Pattern JAMO_PATTERN = Pattern.compile("[ㄱ-ㅣ]");
     private static final int MAX_TARGET_LENGTH = 20;
     private static final int MAX_INTERMEDIATE_WORDS = 3;
+    private static final double MAX_CLIP_SECONDS = 30;
 
     private final SeedReader seedReader;
     private final ContentRepository contentRepository;
@@ -69,6 +70,7 @@ public class ContentSeeder implements ApplicationRunner {
             if (seed.key() == null || seed.key().isBlank() || !keys.add(seed.key())) {
                 throw new IllegalStateException("시드 콘텐츠 '" + seed.title() + "': key가 없거나 겹쳐요");
             }
+            checkClip(seed);
             seed.tasks().forEach(task -> checkTarget(seed.title(), task.stage(), task.target()));
 
             int sortOrder = order.merge(seed.mode(), 1, Integer::sum);
@@ -99,7 +101,37 @@ public class ContentSeeder implements ApplicationRunner {
             content.retainTasks(seed.tasks().stream().map(TaskSeed::stage).collect(Collectors.toSet()));
             contentRepository.save(content);
         }
-        log.info("Seeded contents: {} total, {} new", seeds.size(), created);
+        // 시드에서 빠진 콘텐츠는 지우지 않고 숨긴다 (쓰기 기록이 가리킬 수 있음)
+        List<Content> removed = contentRepository.findBySeedKeyNotInAndActiveTrue(keys);
+        removed.forEach(Content::deactivate);
+        log.info("Seeded contents: {} total, {} new, {} hidden", seeds.size(), created, removed.size());
+    }
+
+    /** 클립 구간 검사. 실제 영상으로 바꿀 때 실수를 기동에서 잡는다. */
+    static void checkClip(ContentSeed seed) {
+        String where = "시드 콘텐츠 '" + seed.title() + "': ";
+        boolean clip = seed.kind() == ContentKind.CLIP;
+        if (!clip) {
+            if (seed.youtubeVideoId() != null || seed.startSec() != null || seed.endSec() != null) {
+                throw new IllegalStateException(where + "영상이 없는 콘텐츠는 youtubeVideoId·startSec·endSec를 비워요");
+            }
+            return;
+        }
+        if (seed.youtubeVideoId() == null || seed.youtubeVideoId().isBlank()
+                || seed.startSec() == null || seed.endSec() == null) {
+            throw new IllegalStateException(where + "클립은 youtubeVideoId·startSec·endSec가 필요해요");
+        }
+        if (seed.startSec() < 0 || seed.endSec() <= seed.startSec() || seed.endSec() - seed.startSec() > MAX_CLIP_SECONDS) {
+            throw new IllegalStateException(where + "재생 구간은 0초 이상, 끝 > 시작, 30초 이하");
+        }
+        if (seed.lines() != null) {
+            for (LineSeed line : seed.lines()) {
+                if (line.startSec() == null || line.endSec() == null
+                        || line.startSec() < seed.startSec() || line.endSec() > seed.endSec() || line.endSec() <= line.startSec()) {
+                    throw new IllegalStateException(where + "자막 '" + line.text() + "'의 시간이 재생 구간 안에 있어야 해요");
+                }
+            }
+        }
     }
 
     static void checkTarget(String title, Stage stage, String target) {
