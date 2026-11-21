@@ -10,6 +10,7 @@ import com.kingsejong.global.error.ErrorCode;
 import com.kingsejong.infra.engine.EngineClient;
 import com.kingsejong.support.IntegrationTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -19,7 +20,14 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,14 +60,22 @@ class WritingTransactionTest extends IntegrationTest {
     @Autowired
     org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
+    private Map<String, Object> userSnapshot;
+
+    @BeforeEach
+    void snapshot() {
+        userSnapshot = jdbcTemplate.queryForMap(
+                "select consent_agreed, exp, streak_days, last_study_date, correct_streak from users where login_code = ?", LOGIN);
+    }
+
     @AfterEach
     void cleanUp() {
+        // 이 테스트가 커밋한 사용자 값(동의, 보상)을 테스트 전 값으로 되돌림 (다른 테스트로 새지 않게)
+        jdbcTemplate.update("update users set consent_agreed = ?, exp = ?, streak_days = ?, last_study_date = ?, correct_streak = ?"
+                        + " where login_code = ?",
+                userSnapshot.get("consent_agreed"), userSnapshot.get("exp"), userSnapshot.get("streak_days"),
+                userSnapshot.get("last_study_date"), userSnapshot.get("correct_streak"), LOGIN);
         User user = userRepository.findByLoginCode(LOGIN).orElseThrow();
-        user.changeConsent(false); // 시드 값으로 되돌림
-        userRepository.save(user);
-        // 보상(#8)으로 커밋된 경험치·연속 학습도 되돌림 (다른 테스트로 새지 않게)
-        jdbcTemplate.update("update users set exp = 0, streak_days = 0, last_study_date = null, correct_streak = 0"
-                + " where login_code = ?", LOGIN);
         Long userId = user.getId();
         writingRepository.deleteAll(writingRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(userId)).toList());
@@ -105,6 +121,33 @@ class WritingTransactionTest extends IntegrationTest {
         Long userId = userRepository.findByLoginCode(LOGIN).orElseThrow().getId();
         assertThat(writingRepository.findAll().stream().filter(w -> w.getUserId().equals(userId)))
                 .singleElement().extracting(Writing::getStatus).isEqualTo(WritingStatus.FAILED);
+    }
+
+    @Test
+    void 같은_제출을_동시에_보내도_하루_15를_넘지_않고_경험치가_유실되지_않는다() throws Exception {
+        CyclicBarrier bothGraded = new CyclicBarrier(2);
+        when(engineClient.grade(any())).thenAnswer(invocation -> {
+            bothGraded.await(5, TimeUnit.SECONDS); // 두 요청이 같은 순간에 보상 계산으로 들어가게
+            return objectMapper.readTree("{\"correct\":true,\"perfect\":true,\"cells\":[]}");
+        });
+        int expBefore = ((Number) userSnapshot.get("exp")).intValue();
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        List<Future<Integer>> results = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            results.add(pool.submit(() -> submit().andReturn().getResponse().getStatus()));
+        }
+        for (Future<Integer> result : results) {
+            assertThat(result.get(20, TimeUnit.SECONDS)).isEqualTo(201);
+        }
+        pool.shutdown();
+
+        Long userId = userRepository.findByLoginCode(LOGIN).orElseThrow().getId();
+        int gainedSum = writingRepository.findAll().stream()
+                .filter(w -> w.getUserId().equals(userId)).mapToInt(Writing::getExpGained).sum();
+        int expAfter = userRepository.findByLoginCode(LOGIN).orElseThrow().getExp();
+        assertThat(gainedSum).isEqualTo(15);
+        assertThat(expAfter - expBefore).isEqualTo(gainedSum);
     }
 
     private org.springframework.test.web.servlet.ResultActions submit() throws Exception {

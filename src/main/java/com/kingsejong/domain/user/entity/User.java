@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import org.hibernate.annotations.DynamicUpdate;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ import java.time.LocalDate;
  */
 @Getter
 @Entity
+@DynamicUpdate // 바뀐 컬럼만 UPDATE (내 정보 수정이 보상으로 바뀐 경험치를 옛 값으로 덮어쓰지 않게)
 @Table(name = "users")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
@@ -129,7 +131,8 @@ public class User extends BaseTimeEntity {
 
     /** 그날 처음 제출하면 연속 학습을 이어 가거나(어제 했으면) 1로 다시 시작한다. */
     public void recordStudy(LocalDate today) {
-        if (today.equals(lastStudyDate)) {
+        // 같은 날이거나 더 이전 날짜면 그대로 (자정을 걸친 제출의 보상이 늦게 와도 되돌아가지 않게)
+        if (lastStudyDate != null && !today.isAfter(lastStudyDate)) {
             return;
         }
         this.streakDays = today.minusDays(1).equals(lastStudyDate) ? streakDays + 1 : 1;

@@ -23,7 +23,8 @@ import java.util.List;
  * - 오늘 같은 콘텐츠·난이도로 이미 받은 만큼을 빼고 차액만 준다
  *   (처음 correct로 10, 다시 써서 perfect면 5를 더 받음. 틀린 뒤 다시 써도 손해 없음)
  * - 연속 학습: 판정을 받은 제출이 그날 하나라도 있으면 하루로 센다
- * - 난이도 올리기 추천: 같은 난이도에서 10번 연속 correct인 그 제출에서만 true, 그 뒤 카운트 0. 고수는 항상 false
+ * - 난이도 올리기 추천: 내 지금 난이도로 10번 연속 correct인 그 제출에서만 true, 그 뒤 카운트 0. 고수는 항상 false
+ * - 사용자 행을 잠가서 같은 사용자의 보상 계산은 한 번에 하나씩 (동시 제출 이중 지급 방지)
  */
 @Service
 @RequiredArgsConstructor
@@ -40,7 +41,8 @@ public class RewardService {
     /** 판정이 끝난 기록에 보상을 준다. 쓰기 제출의 "판정 저장" 트랜잭션 안에서 부른다. */
     @Transactional
     public RewardResponse reward(Writing writing) {
-        User user = userService.getUser(writing.getUserId());
+        // 사용자 행을 먼저 잠근다. 같은 사용자의 동시 제출이 오늘 받은 경험치를 같이 0으로 보고 이중 지급하지 않게
+        User user = userService.getUserForUpdate(writing.getUserId());
         int previousLevelNo = LevelPolicy.levelOf(user.getExp()).no();
 
         int alreadyToday = writingRepository.sumExpGainedOn(
@@ -62,8 +64,12 @@ public class RewardService {
         writing.gainExp(gained);
         user.addExp(gained);
         user.recordStudy(writing.getStudyDate());
-        boolean streakReached = user.countCorrect(writing.isCorrect(), STAGE_UP_STREAK);
-        boolean stageUpSuggested = streakReached && writing.getStage() != Stage.ADVANCED;
+        // 난이도 올리기: 내 지금 난이도로 쓴 제출만 센다 (다른 난이도 콘텐츠를 써 보는 건 카운트에 안 들어감)
+        boolean stageUpSuggested = false;
+        if (user.getStage() != null && writing.getStage() == user.getStage()) {
+            boolean streakReached = user.countCorrect(writing.isCorrect(), STAGE_UP_STREAK);
+            stageUpSuggested = streakReached && user.getStage() != Stage.ADVANCED;
+        }
 
         LevelResponse level = LevelResponse.of(user.getExp());
         int todayDone = writingStatsService.countTodayCorrectContents(user.getId(), writing.getStudyDate());

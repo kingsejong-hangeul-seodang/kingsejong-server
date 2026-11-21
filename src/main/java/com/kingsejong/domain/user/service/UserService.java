@@ -61,6 +61,16 @@ public class UserService {
         return toMe(user);
     }
 
+    /**
+     * 사용자 행을 잠그고 읽는다. 호출한 트랜잭션이 끝날 때까지 같은 사용자의 다른 보상 계산은 기다린다.
+     * 그 트랜잭션에서 사용자를 처음 읽는 호출이어야 잠금 후의 최신 값을 본다.
+     */
+    @Transactional
+    public User getUserForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+    }
+
     /** 다른 도메인에서 사용자 엔티티가 필요할 때. 토큰은 맞는데 계정이 지워졌으면 401. */
     public User getUser(Long userId) {
         return userRepository.findById(userId)

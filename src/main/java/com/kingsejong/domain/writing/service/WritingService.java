@@ -78,24 +78,33 @@ public class WritingService {
         } catch (RuntimeException e) {
             // 엔진 오류든 예상 밖 오류든 원본은 남기고 FAILED로 표시한다.
             // (서버가 엔진 호출 중에 꺼지면 PENDING으로 남는다. 오래된 PENDING은 판정 전 기록으로 보고 무시한다)
-            try {
-                transactionTemplate.executeWithoutResult(status ->
-                        writingRepository.findById(saved.getId()).ifPresent(Writing::failed));
-            } catch (RuntimeException markFailed) {
-                // FAILED 표시가 실패해도 원래 오류(503·504 등)를 그대로 돌려준다
-                log.error("Failed to mark writing {} as FAILED", saved.getId(), markFailed);
-                e.addSuppressed(markFailed);
-            }
+            markFailed(saved.getId(), e);
             throw e;
         }
 
-        // 3. 판정 저장 + 보상 (경험치·레벨·연속 학습·난이도 추천)
-        return transactionTemplate.execute(status -> {
-            Writing writing = writingRepository.findById(saved.getId()).orElseThrow();
-            writing.graded(grade);
-            RewardResponse reward = rewardService.reward(writing);
-            return WritingResponse.of(writing, reward, target.nextContentId());
-        });
+        // 3. 판정 저장 + 보상 (경험치·레벨·연속 학습·난이도 추천). 둘은 함께 커밋되거나 함께 롤백된다
+        try {
+            return transactionTemplate.execute(status -> {
+                Writing writing = writingRepository.findById(saved.getId()).orElseThrow();
+                writing.graded(grade);
+                RewardResponse reward = rewardService.reward(writing);
+                return WritingResponse.of(writing, reward, target.nextContentId());
+            });
+        } catch (RuntimeException e) {
+            markFailed(saved.getId(), e);
+            throw e;
+        }
+    }
+
+    /** 기록을 FAILED로 표시한다. 표시가 실패해도 원래 오류(503·504 등)를 그대로 돌려주도록 예외는 삼킨다. */
+    private void markFailed(Long writingId, RuntimeException cause) {
+        try {
+            transactionTemplate.executeWithoutResult(status ->
+                    writingRepository.findById(writingId).ifPresent(Writing::failed));
+        } catch (RuntimeException markFailed) {
+            log.error("Failed to mark writing {} as FAILED", writingId, markFailed);
+            cause.addSuppressed(markFailed);
+        }
     }
 
     /**

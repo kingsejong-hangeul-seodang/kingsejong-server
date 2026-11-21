@@ -80,4 +80,14 @@ class UserTest {
         user.changeStage(Stage.INTERMEDIATE);
         assertThat(user.getCorrectStreak()).isZero();
     }
+
+    @Test
+    void 더_이전_날짜의_제출이_늦게_와도_연속_학습이_되돌아가지_않는다() {
+        User user = user();
+        user.recordStudy(DAY.minusDays(1));
+        user.recordStudy(DAY);
+        user.recordStudy(DAY.minusDays(1)); // 자정 전 제출의 보상이 늦게 옴
+        assertThat(user.getLastStudyDate()).isEqualTo(DAY);
+        assertThat(user.currentStreakDays(DAY)).isEqualTo(2);
+    }
 }
