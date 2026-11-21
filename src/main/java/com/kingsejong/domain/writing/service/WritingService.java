@@ -7,6 +7,7 @@ import com.kingsejong.domain.content.service.WritingTarget;
 import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.service.UserService;
 import com.kingsejong.domain.writing.dto.request.WritingCreateRequest;
+import com.kingsejong.domain.writing.dto.response.RewardResponse;
 import com.kingsejong.domain.writing.dto.response.WritingResponse;
 import com.kingsejong.domain.writing.entity.Writing;
 import com.kingsejong.domain.writing.repository.WritingRepository;
@@ -29,7 +30,7 @@ import java.util.List;
  * 엔진 호출(최대 10초) 동안 DB 트랜잭션을 잡고 있지 않도록 세 단계로 나눈다.
  * 1. 저장 (트랜잭션): 필기 원본을 먼저 저장 → 엔진이 실패해도 원본이 남는다
  * 2. 엔진 호출 (트랜잭션 밖)
- * 3. 판정 저장 (트랜잭션)
+ * 3. 판정 저장 + 보상 (트랜잭션)
  */
 @Service
 @RequiredArgsConstructor
@@ -39,6 +40,7 @@ public class WritingService {
     private final UserService userService;
     private final ContentService contentService;
     private final EngineClient engineClient;
+    private final RewardService rewardService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -77,13 +79,13 @@ public class WritingService {
             throw e;
         }
 
-        // 3. 판정 저장
-        Writing graded = transactionTemplate.execute(status -> {
+        // 3. 판정 저장 + 보상 (경험치·레벨·연속 학습·난이도 추천)
+        return transactionTemplate.execute(status -> {
             Writing writing = writingRepository.findById(saved.getId()).orElseThrow();
             writing.graded(grade);
-            return writing;
+            RewardResponse reward = rewardService.reward(writing);
+            return WritingResponse.of(writing, reward, target.nextContentId());
         });
-        return WritingResponse.of(graded, target.nextContentId());
     }
 
     /**

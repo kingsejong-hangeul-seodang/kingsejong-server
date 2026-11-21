@@ -16,10 +16,11 @@ public record WritingResponse(
         String target,
         OffsetDateTime createdAt,
         JsonNode grade,
+        RewardResponse reward,
         Long nextContentId
 ) {
 
-    public static WritingResponse of(Writing writing, Long nextContentId) {
+    public static WritingResponse of(Writing writing, RewardResponse reward, Long nextContentId) {
         return new WritingResponse(
                 writing.getId(),
                 writing.getContentId(),
@@ -27,6 +28,7 @@ public record WritingResponse(
                 writing.getTarget(),
                 writing.getCreatedAt(),
                 writing.getGrade(),
+                reward,
                 nextContentId
         );
     }
