@@ -135,6 +135,17 @@ class AuthControllerTest extends IntegrationTest {
     }
 
     @Test
+    void 서명_없는_토큰이면_401() throws Exception {
+        String unsigned = Jwts.builder()
+                .subject("1")
+                .expiration(new Date(System.currentTimeMillis() + 60_000))
+                .compact(); // alg: none
+        mockMvc.perform(get("/api/v1/anything").header(HttpHeaders.AUTHORIZATION, "Bearer " + unsigned))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
     void CORS_사전_요청은_토큰_없이_통과한다() throws Exception {
         mockMvc.perform(options("/api/v1/anything")
                         .header(HttpHeaders.ORIGIN, "http://localhost:5173")
