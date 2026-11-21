@@ -88,7 +88,7 @@ public class EngineClient {
         }
     }
 
-    private static BusinessException toAccessError(ResourceAccessException e) {
+    static BusinessException toAccessError(ResourceAccessException e) {
         Throwable cause = e.getCause();
         // HttpConnectTimeoutException은 HttpTimeoutException의 하위라 먼저 본다
         if (cause instanceof HttpConnectTimeoutException) {
