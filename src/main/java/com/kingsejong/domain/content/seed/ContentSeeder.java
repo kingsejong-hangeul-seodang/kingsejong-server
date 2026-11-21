@@ -1,4 +1,4 @@
-package com.kingsejong.global.seed;
+package com.kingsejong.domain.content.seed;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.kingsejong.domain.content.entity.Content;
@@ -8,6 +8,7 @@ import com.kingsejong.domain.content.entity.ContentTask;
 import com.kingsejong.domain.content.repository.ContentRepository;
 import com.kingsejong.global.common.Mode;
 import com.kingsejong.global.common.Stage;
+import com.kingsejong.global.seed.SeedReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -16,14 +17,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
- * 콘텐츠 시드 (seed/contents.json). contents가 비어 있을 때만 넣는다. 배포에도 필요해서 모든 프로필에서 돈다.
- * 콘텐츠를 고치려면 JSON을 고치고 DB를 초기화(docker-compose down -v)한 뒤 다시 켠다. (관리자 API는 1차 범위 밖)
+ * 콘텐츠 시드 (seed/contents.json). 배포에도 필요해서 모든 프로필에서 돈다.
+ * 서버가 켜질 때마다 key로 찾아서 있으면 덮어쓰고 없으면 만든다 (upsert). JSON만 고치고 다시 켜면 반영된다.
+ * JSON에서 지운 콘텐츠는 DB에서 지우지 않는다 (쓰기 기록이 가리키고 있을 수 있음). 관리자 API는 1차 범위 밖.
  * 정답 문장이 교정 엔진 규칙에 안 맞으면 서버가 켜지지 않는다 (시드 실수를 바로 알기 위해).
  */
 @Slf4j
@@ -46,7 +52,7 @@ public class ContentSeeder implements ApplicationRunner {
     record TaskSeed(Stage stage, String target, String meaning, String title) {
     }
 
-    record ContentSeed(Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
+    record ContentSeed(String key, Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
                        String youtubeVideoId, Double startSec, Double endSec, boolean embeddable,
                        String situation, List<LineSeed> lines, List<TaskSeed> tasks) {
     }
@@ -54,44 +60,46 @@ public class ContentSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) throws IOException {
-        if (contentRepository.count() > 0) {
-            return;
-        }
         List<ContentSeed> seeds = seedReader.read("seed/contents.json", new TypeReference<>() {
         });
         Map<Mode, Integer> order = new EnumMap<>(Mode.class);
+        Set<String> keys = new HashSet<>();
+        int created = 0;
         for (ContentSeed seed : seeds) {
-            Content content = Content.builder()
-                    .mode(seed.mode())
-                    .kind(seed.kind())
-                    .title(seed.title())
-                    .source(seed.source())
-                    .thumbnailUrl(seed.thumbnailUrl())
-                    .youtubeVideoId(seed.youtubeVideoId())
-                    .startSec(seed.startSec())
-                    .endSec(seed.endSec())
-                    .embeddable(seed.embeddable())
-                    .situation(seed.situation())
-                    .sortOrder(order.merge(seed.mode(), 1, Integer::sum))
-                    .build();
+            if (seed.key() == null || seed.key().isBlank() || !keys.add(seed.key())) {
+                throw new IllegalStateException("시드 콘텐츠 '" + seed.title() + "': key가 없거나 겹쳐요");
+            }
+            seed.tasks().forEach(task -> checkTarget(seed.title(), task.stage(), task.target()));
+
+            int sortOrder = order.merge(seed.mode(), 1, Integer::sum);
+            Content content = contentRepository.findBySeedKey(seed.key()).orElse(null);
+            if (content == null) {
+                content = Content.builder().seedKey(seed.key()).mode(seed.mode()).kind(seed.kind())
+                        .title(seed.title()).sortOrder(sortOrder).build();
+                created++;
+            }
+            content.update(seed.mode(), seed.kind(), seed.title(), seed.source(), seed.thumbnailUrl(),
+                    seed.youtubeVideoId(), seed.startSec(), seed.endSec(), seed.embeddable(),
+                    seed.situation(), sortOrder);
+
             List<LineSeed> lines = seed.lines() != null ? seed.lines() : List.of();
+            List<ContentLine> newLines = new ArrayList<>();
             for (int i = 0; i < lines.size(); i++) {
                 LineSeed line = lines.get(i);
-                content.addLine(ContentLine.builder()
+                newLines.add(ContentLine.builder()
                         .text(line.text()).startSec(line.startSec()).endSec(line.endSec())
                         .translation(line.translation()).sortOrder(i + 1)
                         .build());
             }
+            content.replaceLines(newLines);
+
             for (TaskSeed task : seed.tasks()) {
-                checkTarget(seed.title(), task.stage(), task.target());
-                content.addTask(ContentTask.builder()
-                        .stage(task.stage()).target(task.target())
-                        .meaning(task.meaning()).title(task.title())
-                        .build());
+                content.putTask(task.stage(), task.target(), task.meaning(), task.title());
             }
+            content.retainTasks(seed.tasks().stream().map(TaskSeed::stage).collect(Collectors.toSet()));
             contentRepository.save(content);
         }
-        log.info("Seeded {} contents", seeds.size());
+        log.info("Seeded contents: {} total, {} new", seeds.size(), created);
     }
 
     static void checkTarget(String title, Stage stage, String target) {

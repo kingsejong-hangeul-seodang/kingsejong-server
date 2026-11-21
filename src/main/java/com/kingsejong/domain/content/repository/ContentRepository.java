@@ -8,8 +8,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ContentRepository extends JpaRepository<Content, Long> {
+
+    Optional<Content> findBySeedKey(String seedKey);
 
     /** 그 모드에서 이 난이도로 쓸 글이 있는 콘텐츠, 순서대로. */
     @Query("""
