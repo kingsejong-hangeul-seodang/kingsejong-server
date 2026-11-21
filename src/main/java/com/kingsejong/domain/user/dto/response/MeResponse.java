@@ -22,10 +22,18 @@ public record MeResponse(
         boolean onboardingCompleted,
         String loginCode,
         LevelResponse level,
-        List<LevelPolicy.LevelDef> levels,
+        List<LevelInfo> levels,
         int streakDays,
         TodayResponse today
 ) {
+
+    /** 레벨 한 단계 (마이페이지 "킹세종이 자라는 모습"). 레벨 정책 클래스와 API 모양을 분리한다. */
+    public record LevelInfo(int no, String name, int minExp) {
+
+        static LevelInfo from(LevelPolicy.LevelDef level) {
+            return new LevelInfo(level.no(), level.name(), level.minExp());
+        }
+    }
 
     public static MeResponse of(User user, LocalDate today, int todayDone) {
         return new MeResponse(
@@ -39,7 +47,7 @@ public record MeResponse(
                 user.isOnboardingCompleted(),
                 user.getLoginCode(),
                 LevelResponse.of(user.getExp()),
-                LevelPolicy.LEVELS,
+                LevelPolicy.LEVELS.stream().map(LevelInfo::from).toList(),
                 user.currentStreakDays(today),
                 TodayResponse.of(todayDone)
         );

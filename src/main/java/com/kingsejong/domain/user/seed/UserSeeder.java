@@ -1,4 +1,4 @@
-package com.kingsejong.global.seed;
+package com.kingsejong.domain.user.seed;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.kingsejong.domain.user.entity.Experience;
@@ -7,6 +7,7 @@ import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.repository.UserRepository;
 import com.kingsejong.global.common.Mode;
 import com.kingsejong.global.common.Stage;
+import com.kingsejong.global.seed.SeedReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;

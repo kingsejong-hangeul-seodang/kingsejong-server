@@ -9,10 +9,13 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
@@ -121,6 +124,40 @@ class EngineClientTest {
     void 헬스체크는_엔진_응답을_준다() {
         response = "{\"status\":\"ok\",\"engineVersion\":\"0.1.0-stub\"}";
         assertThat(client(Duration.ofSeconds(2)).health().get("engineVersion").asText()).isEqualTo("0.1.0-stub");
+    }
+
+    @Test
+    void 엔진이_멈춰도_헬스체크는_2초대에_돌아온다() {
+        delayMs = 3000;
+        response = "{\"status\":\"ok\"}";
+        long start = System.nanoTime();
+        JsonNode result = client(Duration.ofSeconds(10)).health();
+        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+        assertThat(result).isNull();
+        assertThat(elapsedMs).isLessThan(2_800);
+    }
+
+    @Test
+    void 엔진_헬스가_500이면_null() {
+        status = 500;
+        assertThat(client(Duration.ofSeconds(2)).health()).isNull();
+    }
+
+    @Test
+    void 상태는_200인데_JSON이_아니면_ENGINE_ERROR() {
+        response = "<html>oops</html>";
+        assertError(client(Duration.ofSeconds(2)), ErrorCode.ENGINE_ERROR);
+    }
+
+    @Test
+    void 연결_제한_시간_초과는_503_응답_제한_시간_초과는_504() {
+        assertThat(EngineClient.toAccessError(new ResourceAccessException("x",
+                new HttpConnectTimeoutException("connect"))).getErrorCode()).isEqualTo(ErrorCode.ENGINE_UNAVAILABLE);
+        assertThat(EngineClient.toAccessError(new ResourceAccessException("x",
+                new HttpTimeoutException("read"))).getErrorCode()).isEqualTo(ErrorCode.ENGINE_TIMEOUT);
+        assertThat(EngineClient.toAccessError(new ResourceAccessException("x",
+                new java.net.ConnectException("refused"))).getErrorCode()).isEqualTo(ErrorCode.ENGINE_UNAVAILABLE);
     }
 
     private void assertError(EngineClient client, ErrorCode expected) {

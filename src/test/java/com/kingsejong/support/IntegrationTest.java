@@ -1,6 +1,7 @@
 package com.kingsejong.support;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +30,19 @@ public abstract class IntegrationTest {
 
     @Autowired
     protected ObjectMapper objectMapper;
+
+    @Autowired
+    protected EntityManager entityManager;
+
+    /**
+     * 지금까지의 변경을 DB에 쓰고 영속성 컨텍스트를 비운다.
+     * 테스트가 한 트랜잭션이라 "저장이 안 되는" 버그(@Transactional 누락 등)를 놓치지 않으려면,
+     * 변경 후 이걸 부르고 다시 조회해서 DB 값으로 확인한다.
+     */
+    protected void flushAndClear() {
+        entityManager.flush();
+        entityManager.clear();
+    }
 
     /** 시드 계정으로 로그인하고 "Bearer <토큰>"을 돌려준다. */
     protected String bearer(String loginCode) throws Exception {
