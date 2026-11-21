@@ -48,25 +48,38 @@ public class HealthController {
 
     /**
      * 5초 안에 확인한 값이 있으면 그대로 준다. 지나면 요청 하나만 엔진을 확인하고,
-     * 그동안 들어온 다른 요청은 기다리지 않고 마지막 값(처음이면 down)을 받는다.
+     * 그동안 들어온 다른 요청은 기다리지 않고 마지막 값을 받는다.
      */
     private EngineStatus engineStatus() {
         Cached current = cached;
         if (current != null && System.nanoTime() - current.checkedAtNanos() < ENGINE_CHECK_INTERVAL.toNanos()) {
             return current.status();
         }
+        if (current == null) {
+            // 서버가 막 떠서 아직 값이 없으면, 엔진이 정상인데 down으로 보이지 않게 첫 확인을 기다린다 (최대 2초, 한 번뿐)
+            synchronized (this) {
+                if (cached == null) {
+                    cached = new Cached(check(), System.nanoTime());
+                }
+                return cached.status();
+            }
+        }
         if (!refreshing.compareAndSet(false, true)) {
-            return current != null ? current.status() : new EngineStatus("down", null);
+            return current.status();
         }
         try {
-            JsonNode engine = engineClient.health();
-            EngineStatus status = engine != null
-                    ? new EngineStatus("ok", engine.path("engineVersion").asText(null))
-                    : new EngineStatus("down", null);
+            EngineStatus status = check();
             cached = new Cached(status, System.nanoTime());
             return status;
         } finally {
             refreshing.set(false);
         }
+    }
+
+    private EngineStatus check() {
+        JsonNode engine = engineClient.health();
+        return engine != null
+                ? new EngineStatus("ok", engine.path("engineVersion").asText(null))
+                : new EngineStatus("down", null);
     }
 }

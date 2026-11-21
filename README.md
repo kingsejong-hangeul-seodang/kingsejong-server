@@ -31,6 +31,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 다른 주소면 환경 변수 `ENGINE_BASE_URL`로 바꿉니다.
 
+콘텐츠는 `src/main/resources/seed/contents.json`이 원본입니다. 고치고 서버를 다시 켜면 반영되고, DB에서 직접 고친 값은 덮어써집니다.
+
 ## 폴더 구조
 
 ```

@@ -189,4 +189,12 @@ class MeControllerTest extends IntegrationTest {
         mockMvc.perform(patch("/api/v1/me").contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void JSON이_아닌_응답을_요구하면_406이고_500이_아니다() throws Exception {
+        // 응답을 JSON으로 쓸 수 없는 요청이라 본문 없이 406이 나간다. 서버 오류(500)로 보이지 않으면 된다
+        mockMvc.perform(get("/api/v1/me").header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001"))
+                        .accept(MediaType.APPLICATION_XML))
+                .andExpect(status().isNotAcceptable());
+    }
 }

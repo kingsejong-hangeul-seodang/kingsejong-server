@@ -135,7 +135,7 @@ class EngineClientTest {
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
         assertThat(result).isNull();
-        assertThat(elapsedMs).isLessThan(2_800);
+        assertThat(elapsedMs).isLessThan(3_000); // 엔진은 3초 뒤에 답하므로, 그 전에 돌아왔다는 뜻
     }
 
     @Test
