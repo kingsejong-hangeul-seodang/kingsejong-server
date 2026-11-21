@@ -29,10 +29,15 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header == null || !header.startsWith(BEARER)) {
+        // 스킴은 대소문자를 가리지 않는다 ("bearer xxx"도 허용)
+        if (header == null || !header.regionMatches(true, 0, BEARER, 0, BEARER.length())) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        Long userId = jwtProvider.parseUserId(header.substring(BEARER.length()).trim());
+        String token = header.substring(BEARER.length()).trim();
+        if (token.isEmpty()) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        Long userId = jwtProvider.parseUserId(token);
         request.setAttribute(USER_ID_ATTRIBUTE, userId);
         return true;
     }
