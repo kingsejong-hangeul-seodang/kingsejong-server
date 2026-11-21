@@ -1,6 +1,7 @@
 package com.kingsejong.domain.user.service;
 
 import com.kingsejong.domain.user.dto.request.LoginRequest;
+import com.kingsejong.domain.user.dto.request.MeUpdateRequest;
 import com.kingsejong.domain.user.dto.response.LoginResponse;
 import com.kingsejong.domain.user.dto.response.MeResponse;
 import com.kingsejong.domain.user.entity.User;
@@ -25,6 +26,35 @@ public class UserService {
         User user = userRepository.findByLoginCode(request.code().trim())
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_LOGIN_CODE));
         return new LoginResponse(jwtProvider.create(user.getId()), toMe(user));
+    }
+
+    public MeResponse getMe(Long userId) {
+        return toMe(getUser(userId));
+    }
+
+    /** 보낸 필드만 바꾼다 (null = 안 바꿈). */
+    @Transactional
+    public MeResponse updateMe(Long userId, MeUpdateRequest request) {
+        User user = getUser(userId);
+        if (request.locale() != null) {
+            user.changeLocale(request.locale());
+        }
+        if (request.consentAgreed() != null) {
+            user.changeConsent(request.consentAgreed());
+        }
+        if (request.experience() != null) {
+            user.changeExperience(request.experience());
+        }
+        if (request.stage() != null) {
+            user.changeStage(request.stage());
+        }
+        if (request.lastMode() != null) {
+            user.changeLastMode(request.lastMode());
+        }
+        if (Boolean.TRUE.equals(request.onboardingCompleted())) {
+            user.completeOnboarding();
+        }
+        return toMe(user);
     }
 
     /** 다른 도메인에서 사용자 엔티티가 필요할 때. 토큰은 맞는데 계정이 지워졌으면 401. */

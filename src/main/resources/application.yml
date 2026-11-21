@@ -23,6 +23,8 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false   # ISO-8601 문자열
+    deserialization:
+      fail-on-unknown-properties: true   # 요청 필드 오타("stagee")를 조용히 무시하지 않고 422
     time-zone: Asia/Seoul                # 응답 시간은 +09:00 (API 명세)
 
 server:
