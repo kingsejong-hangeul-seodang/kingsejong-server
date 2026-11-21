@@ -1,0 +1,30 @@
+package com.kingsejong.domain.writing.repository;
+
+import com.kingsejong.domain.writing.entity.Writing;
+import com.kingsejong.global.common.Stage;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+
+public interface WritingRepository extends JpaRepository<Writing, Long> {
+
+    /** 그날 맞게 쓴 서로 다른 콘텐츠 수 (일일 챌린지). */
+    @Query("""
+            select count(distinct w.contentId) from Writing w
+            where w.userId = :userId and w.studyDate = :date and w.correct = true
+            """)
+    long countCorrectContentsOn(@Param("userId") Long userId, @Param("date") LocalDate date);
+
+    /** 이 난이도로 맞게 쓴 적이 있는 콘텐츠와, 그중 perfect가 한 번이라도 있었는지. [contentId, perfect] */
+    @Query("""
+            select w.contentId, max(case when w.perfect = true then 1 else 0 end) from Writing w
+            where w.userId = :userId and w.stage = :stage and w.correct = true and w.contentId in :contentIds
+            group by w.contentId
+            """)
+    List<Object[]> findCompletion(@Param("userId") Long userId, @Param("stage") Stage stage,
+                                  @Param("contentIds") Collection<Long> contentIds);
+}
