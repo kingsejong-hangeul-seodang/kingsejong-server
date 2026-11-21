@@ -56,8 +56,8 @@ app:
     secret: ${JWT_SECRET}
     ttl-days: 30
   engine:
-    # 교정 엔진 주소. 로컬은 엔진 레포에서 uvicorn app.main:app --port 8000
-    base-url: ${ENGINE_BASE_URL:http://localhost:8000}
+    # 환경 변수 ENGINE_BASE_URL 필수. 기본값은 local·test 프로필에만 있다
+    base-url: ${ENGINE_BASE_URL}
     connect-timeout: 2s
     read-timeout: 10s
 
@@ -87,6 +87,9 @@ logging:
 app:
   jwt:
     secret: ${JWT_SECRET:kingsejong-local-dev-secret-key-0123456789}
+  engine:
+    # 로컬 엔진: 엔진 레포에서 .venv/bin/uvicorn app.main:app --port 8000
+    base-url: ${ENGINE_BASE_URL:http://localhost:8000}
 
 # =====================================================================
 # test — Testcontainers(@ServiceConnection)가 datasource 를 넣어 주므로 url 을 적지 않는다
