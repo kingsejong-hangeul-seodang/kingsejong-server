@@ -17,6 +17,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * 교정 엔진(FastAPI) 호출. 주소는 app.engine.base-url (환경 변수 ENGINE_BASE_URL).
@@ -74,6 +75,36 @@ public class EngineClient {
             throw toAccessError(e);
         } catch (RestClientException e) {
             log.error("Engine call failed", e);
+            throw new BusinessException(ErrorCode.ENGINE_ERROR);
+        }
+    }
+
+    /**
+     * 글자 하나의 정답 획 (엔진 GET /reference/{글자}). 엔진 응답의 strokes 배열을 그대로 준다.
+     * 정답 획 사전에 없는 글자면 Optional.empty(). 엔진에 사전이 없으면(503) ENGINE_UNAVAILABLE.
+     */
+    public Optional<JsonNode> reference(String ch) {
+        try {
+            JsonNode body = gradeClient.get()
+                    .uri(builder -> builder.path("/reference/{char}").build(ch))
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (body == null || !body.path("strokes").isArray()) {
+                log.error("Engine returned an unexpected reference body: {}", body);
+                throw new BusinessException(ErrorCode.ENGINE_ERROR);
+            }
+            return Optional.of(body.get("strokes"));
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                return Optional.empty();
+            }
+            log.error("Engine reference error {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(e.getStatusCode().value() == 503
+                    ? ErrorCode.ENGINE_UNAVAILABLE : ErrorCode.ENGINE_ERROR);
+        } catch (ResourceAccessException e) {
+            throw toAccessError(e);
+        } catch (RestClientException e) {
+            log.error("Engine reference call failed", e);
             throw new BusinessException(ErrorCode.ENGINE_ERROR);
         }
     }
