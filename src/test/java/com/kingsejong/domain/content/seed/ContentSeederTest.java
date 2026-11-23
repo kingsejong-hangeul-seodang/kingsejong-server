@@ -26,6 +26,9 @@ class ContentSeederTest extends IntegrationTest {
     @Autowired
     ContentRepository contentRepository;
 
+    @Autowired
+    com.kingsejong.domain.taste.service.TasteService tasteService;
+
     @Test
     void 엔진_규칙에_맞는_정답은_통과한다() {
         assertThatCode(() -> ContentSeeder.checkTarget("t", Stage.BEGINNER, "바다")).doesNotThrowAnyException();
@@ -60,7 +63,7 @@ class ContentSeederTest extends IntegrationTest {
     void DB에서_바꾼_값은_다시_돌리면_JSON_값으로_돌아오고_자막과_쓸_글이_쌓이지_않는다() throws Exception {
         Content content = contentRepository.findBySeedKey("kpop-starlight").orElseThrow();
         content.update(content.getMode(), content.getKind(), "바뀐 제목", content.getSource(), null,
-                "CHANGED_ID", content.getStartSec(), content.getEndSec(), true, null, content.getSortOrder());
+                "CHANGED_ID", content.getStartSec(), content.getEndSec(), true, null, content.getSortOrder(), null);
         flushAndClear();
 
         contentSeeder.run(null);
@@ -81,10 +84,10 @@ class ContentSeederTest extends IntegrationTest {
             public <T> T read(String path, TypeReference<T> type) {
                 return (T) List.of(new ContentSeeder.ContentSeed("kpop-starlight", Mode.KPOP, ContentKind.CLIP,
                         "별빛 아래", null, null, "VIDEO_ID_01", 62.0, 88.0, true, null, List.of(),
-                        List.of(new ContentSeeder.TaskSeed(Stage.BEGINNER, "바다", "sea", null))));
+                        List.of(new ContentSeeder.TaskSeed(Stage.BEGINNER, "바다", "sea", null)), null));
             }
         };
-        new ContentSeeder(onlyStarlight, contentRepository).run(null);
+        new ContentSeeder(onlyStarlight, contentRepository, tasteService).run(null);
         flushAndClear();
 
         assertThat(contentRepository.findBySeedKey("kpop-starlight").orElseThrow().getTasks()).hasSize(1);
@@ -97,9 +100,9 @@ class ContentSeederTest extends IntegrationTest {
     void key가_없거나_겹치면_예외() {
         ContentSeeder.TaskSeed task = new ContentSeeder.TaskSeed(Stage.BEGINNER, "물", null, null);
         ContentSeeder.ContentSeed a = new ContentSeeder.ContentSeed("same", Mode.BASIC, ContentKind.WORD,
-                "a", null, null, null, null, null, false, null, null, List.of(task));
+                "a", null, null, null, null, null, false, null, null, List.of(task), null);
         ContentSeeder.ContentSeed noKey = new ContentSeeder.ContentSeed(null, Mode.BASIC, ContentKind.WORD,
-                "b", null, null, null, null, null, false, null, null, List.of(task));
+                "b", null, null, null, null, null, false, null, null, List.of(task), null);
         assertThatThrownBy(() -> seederWith(List.of(a, a)).run(null)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> seederWith(List.of(noKey)).run(null)).isInstanceOf(IllegalStateException.class);
     }
@@ -117,7 +120,7 @@ class ContentSeederTest extends IntegrationTest {
                 List.of(new ContentSeeder.LineSeed("자막", 18.0, 25.0, null))))) // 구간 밖
                 .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> ContentSeeder.checkClip(new ContentSeeder.ContentSeed("k", Mode.BASIC,
-                ContentKind.WORD, "t", null, null, "ID", null, null, false, null, null, List.of())))
+                ContentKind.WORD, "t", null, null, "ID", null, null, false, null, null, List.of(), null)))
                 .isInstanceOf(IllegalStateException.class); // 영상 없는 콘텐츠에 영상 ID
         assertThatCode(() -> ContentSeeder.checkClip(clip("ID", 10.0, 40.0,
                 List.of(new ContentSeeder.LineSeed("자막", 12.0, 15.0, null))))).doesNotThrowAnyException();
@@ -125,7 +128,7 @@ class ContentSeederTest extends IntegrationTest {
 
     private ContentSeeder.ContentSeed clip(String videoId, Double start, Double end, List<ContentSeeder.LineSeed> lines) {
         return new ContentSeeder.ContentSeed("k", Mode.KPOP, ContentKind.CLIP, "t", null, null,
-                videoId, start, end, true, null, lines, List.of());
+                videoId, start, end, true, null, lines, List.of(), null);
     }
 
     private ContentSeeder seederWith(List<ContentSeeder.ContentSeed> seeds) {
@@ -136,7 +139,7 @@ class ContentSeederTest extends IntegrationTest {
                 return (T) seeds;
             }
         };
-        return new ContentSeeder(reader, contentRepository);
+        return new ContentSeeder(reader, contentRepository, tasteService);
     }
 
     private static void assertRejected(Stage stage, String target) {
