@@ -7,7 +7,7 @@ import com.kingsejong.domain.jamo.dto.JamoDetailResponse;
 import com.kingsejong.domain.jamo.dto.JamoListResponse;
 import com.kingsejong.domain.jamo.entity.UserJamoStat;
 import com.kingsejong.domain.jamo.repository.UserJamoStatRepository;
-import com.kingsejong.domain.writing.entity.Writing;
+import com.kingsejong.domain.writing.repository.RecentWritingRow;
 import com.kingsejong.domain.writing.service.WritingQueryService;
 import com.kingsejong.global.common.Hangul;
 import com.kingsejong.global.error.BusinessException;
@@ -30,7 +30,6 @@ public class JamoService {
     static final int RECENT_LIMIT = 3;
     static final int RECENT_SCAN = 50;
     static final int EXAMPLE_LIMIT = 4;
-    private static final java.util.Set<String> STROKE_ERRORS = java.util.Set.of("ORDER", "DIRECTION", "MISSING", "EXTRA");
 
     private final JamoCatalog jamoCatalog;
     private final UserJamoStatRepository userJamoStatRepository;
@@ -81,20 +80,20 @@ public class JamoService {
 
     /** 이 자모가 정답 문장에 든 최근 기록 3개. 그 기록에서 이 자모가 든 칸들의 결과로 result·message를 정한다. */
     private List<JamoDetailResponse.RecentWriting> recentWritings(Long userId, String jamo) {
-        List<Writing> candidates = writingQueryService.recentGraded(userId, RECENT_SCAN).stream()
-                .filter(w -> containsJamo(w.getTarget(), jamo))
+        List<RecentWritingRow> candidates = writingQueryService.recentGraded(userId, RECENT_SCAN).stream()
+                .filter(w -> containsJamo(w.target(), jamo))
                 .limit(RECENT_LIMIT)
                 .toList();
         Map<String, ContentSummary> contents = contentService.getSummaries(
-                candidates.stream().map(Writing::getContentId).distinct().toList(),
-                candidates.stream().map(Writing::getStage).distinct().toList());
+                candidates.stream().map(RecentWritingRow::contentId).distinct().toList(),
+                candidates.stream().map(RecentWritingRow::stage).distinct().toList());
         List<JamoDetailResponse.RecentWriting> result = new ArrayList<>();
-        for (Writing w : candidates) {
-            ContentSummary content = contents.get(w.getContentId() + ":" + w.getStage().getCode());
-            String[] outcome = outcome(w.getGrade(), jamo);
-            result.add(new JamoDetailResponse.RecentWriting(w.getId(), w.getTarget(),
+        for (RecentWritingRow w : candidates) {
+            ContentSummary content = contents.get(w.contentId() + ":" + w.stage().getCode());
+            String[] outcome = outcome(w.grade(), jamo);
+            result.add(new JamoDetailResponse.RecentWriting(w.id(), w.target(),
                     content != null ? content.mode() : null, content != null ? content.source() : null,
-                    w.getCreatedAt(), outcome[0], outcome[1]));
+                    w.createdAt(), outcome[0], outcome[1]));
         }
         return result;
     }
@@ -108,27 +107,57 @@ public class JamoService {
         return false;
     }
 
-    /** [result, message]. 글자가 틀린 칸이 있으면 char, 이 자모에 획 오류가 있으면 stroke, 아니면 ok. */
+    /**
+     * [result, message]. 이 자모가 든 칸 중 글자가 틀린 칸이 있으면 char, 이 자모에 획 오류(순서·방향·빠진 획·더 쓴 획)가
+     * 있으면 stroke, 아니면 ok. message는 엔진이 사용자 언어로 준 설명(explanations[].text)을 그대로 쓰고,
+     * 다 맞았거나 맞는 설명이 없으면 null (명세 3.13).
+     */
     static String[] outcome(JsonNode grade, String jamo) {
-        String strokeChar = null;
+        boolean stroke = false;
         for (JsonNode cell : grade.path("cells")) {
             String expected = cell.path("expected").asText(null);
             if (expected == null || !Hangul.toJamo(expected).contains(jamo)) {
                 continue;
             }
+            int index = cell.path("index").asInt(-1);
             if (!cell.path("charCorrect").asBoolean(false)) {
-                return new String[]{"char", "‘" + expected + "’를 다른 글자로 썼어요"};
+                return new String[]{"char", explanation(grade, "char", index, null)};
             }
             for (JsonNode error : cell.path("errors")) {
-                if (STROKE_ERRORS.contains(error.path("type").asText())
+                if (JamoStatService.STROKE_ERRORS.contains(error.path("type").asText())
                         && Hangul.normalize(error.path("jamo").asText("")).contains(jamo)) {
-                    strokeChar = expected;
+                    stroke = true;
                 }
             }
         }
-        if (strokeChar != null) {
-            return new String[]{"stroke", "‘" + strokeChar + "’의 " + jamo + " 쓰는 순서가 달랐어요"};
+        if (stroke) {
+            return new String[]{"stroke", explanation(grade, "stroke", -1, jamo)};
         }
-        return new String[]{"ok", jamo + "을(를) 바르게 썼어요"};
+        return new String[]{"ok", null};
+    }
+
+    /** 엔진 설명 한 줄: char는 그 칸이 든 설명, stroke는 그 자모의 설명. */
+    private static String explanation(JsonNode grade, String kind, int cellIndex, String jamo) {
+        for (JsonNode e : grade.path("explanations")) {
+            if (!kind.equals(e.path("kind").asText())) {
+                continue;
+            }
+            boolean match = jamo != null
+                    ? Hangul.normalize(e.path("jamo").asText("")).contains(jamo)
+                    : containsIndex(e.path("cellIndexes"), cellIndex);
+            if (match && e.path("text").isTextual()) {
+                return e.get("text").asText();
+            }
+        }
+        return null;
+    }
+
+    private static boolean containsIndex(JsonNode indexes, int index) {
+        for (JsonNode i : indexes) {
+            if (i.asInt() == index) {
+                return true;
+            }
+        }
+        return false;
     }
 }

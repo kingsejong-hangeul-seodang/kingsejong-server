@@ -6,6 +6,7 @@ import com.kingsejong.domain.writing.dto.response.WritingDetailResponse;
 import com.kingsejong.domain.writing.dto.response.WritingListResponse;
 import com.kingsejong.domain.writing.entity.Writing;
 import com.kingsejong.domain.writing.entity.WritingStatus;
+import com.kingsejong.domain.writing.repository.RecentWritingRow;
 import com.kingsejong.domain.writing.repository.WritingRepository;
 import com.kingsejong.domain.writing.repository.WritingRow;
 import com.kingsejong.global.error.BusinessException;
@@ -46,8 +47,8 @@ public class WritingQueryService {
     }
 
     /** 판정이 끝난 내 기록 최신순 limit개 (자모 상세의 최근 기록). */
-    public List<Writing> recentGraded(Long userId, int limit) {
-        return writingRepository.findGradedPage(userId, Long.MAX_VALUE, PageRequest.of(0, limit));
+    public List<RecentWritingRow> recentGraded(Long userId, int limit) {
+        return writingRepository.findRecentGraded(userId, PageRequest.of(0, limit));
     }
 
     /** 내 기록이 아니면 403, 없거나 판정 전·실패한 기록이면 404. */

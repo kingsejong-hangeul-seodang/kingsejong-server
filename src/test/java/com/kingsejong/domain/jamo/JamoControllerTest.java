@@ -26,7 +26,9 @@ class JamoControllerTest extends IntegrationTest {
     /** 바다: '바'는 맞았지만 ㅂ 획순이 다름, '다'는 다른 글자. */
     private static final String GRADE_BA_STROKE_DA_WRONG = "{\"correct\":false,\"perfect\":false,\"cells\":["
             + "{\"index\":0,\"expected\":\"바\",\"charCorrect\":true,\"mark\":\"stroke\",\"errors\":[{\"type\":\"ORDER\",\"jamo\":\"ㅂ\",\"role\":\"cho\"}]},"
-            + "{\"index\":1,\"expected\":\"다\",\"charCorrect\":false,\"mark\":\"char\",\"errors\":[{\"type\":\"CHAR_MISMATCH\"}]}]}";
+            + "{\"index\":1,\"expected\":\"다\",\"charCorrect\":false,\"mark\":\"char\",\"errors\":[{\"type\":\"CHAR_MISMATCH\"}]}],"
+            + "\"explanations\":[{\"kind\":\"stroke\",\"jamo\":\"ㅂ\",\"right\":\"바\",\"cellIndexes\":[0],\"text\":\"바의 ㅂ은 세로획부터 써요.\"},"
+            + "{\"kind\":\"char\",\"wrong\":\"타\",\"right\":\"다\",\"cellIndexes\":[1],\"text\":\"타라고 쓰셨는데 다라고 써야 해요.\"}]}";
     private static final String GRADE_ALL_OK = "{\"correct\":true,\"perfect\":true,\"cells\":["
             + "{\"index\":0,\"expected\":\"바\",\"charCorrect\":true,\"mark\":\"none\",\"errors\":[]},"
             + "{\"index\":1,\"expected\":\"다\",\"charCorrect\":true,\"mark\":\"none\",\"errors\":[]}]}";
@@ -92,11 +94,12 @@ class JamoControllerTest extends IntegrationTest {
                 .andExpect(jsonPath("$.recentWritings[0].mode").value("kpop"))
                 .andExpect(jsonPath("$.recentWritings[0].source").value("하늘빛 - 별빛 아래"))
                 .andExpect(jsonPath("$.recentWritings[0].result").value("stroke"))
-                .andExpect(jsonPath("$.recentWritings[0].message").value(containsString("ㅂ")))
+                .andExpect(jsonPath("$.recentWritings[0].message").value("바의 ㅂ은 세로획부터 써요."))
                 .andExpect(jsonPath("$.practiceContentId").isNumber());
 
         mockMvc.perform(get("/api/v1/jamo/{j}", "ㄷ").header(HttpHeaders.AUTHORIZATION, token))
-                .andExpect(jsonPath("$.recentWritings[0].result").value("char"));
+                .andExpect(jsonPath("$.recentWritings[0].result").value("char"))
+                .andExpect(jsonPath("$.recentWritings[0].message").value("타라고 쓰셨는데 다라고 써야 해요."));
         mockMvc.perform(get("/api/v1/jamo/{j}", "ㅢ").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(jsonPath("$.type").value("vowel"))
                 .andExpect(jsonPath("$.recentWritings.length()").value(0))
@@ -113,6 +116,57 @@ class JamoControllerTest extends IntegrationTest {
         mockMvc.perform(get("/api/v1/contents/{id}", practiceId).param("stage", "beginner").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(jsonPath("$.kind").value("jamo"))
                 .andExpect(jsonPath("$.task.target").value("ㄷ"));
+    }
+
+    @Test
+    void 다_맞은_기록은_ok이고_message는_null() throws Exception {
+        String token = bearer("DGU-0001");
+        submitBada(token, GRADE_ALL_OK);
+        mockMvc.perform(get("/api/v1/jamo/{j}", "ㄷ").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.recentWritings[0].result").value("ok"))
+                .andExpect(jsonPath("$.recentWritings[0].message").isEmpty());
+    }
+
+    @Test
+    void 균형_오류는_안_세고_한_칸의_같은_자모_오류는_한_번만_겹받침은_나눠_센다() throws Exception {
+        String token = bearer("DGU-0001");
+        submitBada(token, "{\"correct\":true,\"perfect\":false,\"cells\":["
+                + "{\"index\":0,\"expected\":\"닭\",\"charCorrect\":true,\"errors\":["
+                + "{\"type\":\"ORDER\",\"jamo\":\"ㄷ\"},{\"type\":\"DIRECTION\",\"jamo\":\"ㄷ\"},{\"type\":\"BALANCE\",\"jamo\":\"ㅏ\"}]},"
+                + "{\"index\":1,\"expected\":\"다\",\"charCorrect\":true,\"errors\":[]}]}");
+        flushAndClear();
+
+        JsonNode dogam = objectMapper.readTree(mockMvc.perform(get("/api/v1/jamo").header(HttpHeaders.AUTHORIZATION, token))
+                .andReturn().getResponse().getContentAsString());
+        org.assertj.core.api.Assertions.assertThat(find(dogam.get("consonants"), "ㄷ").get("writeCount").asInt()).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(find(dogam.get("consonants"), "ㄷ").get("errorCount").asInt()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(find(dogam.get("vowels"), "ㅏ").get("errorCount").asInt()).isZero();
+        org.assertj.core.api.Assertions.assertThat(find(dogam.get("consonants"), "ㄹ").get("writeCount").asInt()).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(find(dogam.get("consonants"), "ㄱ").get("writeCount").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void 도감은_자음_19_모음_21_순서와_종류() throws Exception {
+        JsonNode dogam = objectMapper.readTree(mockMvc.perform(get("/api/v1/jamo")
+                .header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001"))).andReturn().getResponse().getContentAsString());
+        String consonants = "", vowels = "";
+        for (JsonNode n : dogam.get("consonants")) consonants += n.get("jamo").asText();
+        for (JsonNode n : dogam.get("vowels")) vowels += n.get("jamo").asText();
+        org.assertj.core.api.Assertions.assertThat(consonants).isEqualTo("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ");
+        org.assertj.core.api.Assertions.assertThat(vowels).isEqualTo("ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ");
+        mockMvc.perform(get("/api/v1/jamo/{j}", "ㅊ").header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001")))
+                .andExpect(jsonPath("$.strokeCount").value(4)); // 엔진 정답 획 수와 같게
+    }
+
+    @Test
+    void 최근_기록은_3개까지_내_것만() throws Exception {
+        String token = bearer("DGU-0001");
+        for (int i = 0; i < 4; i++) {
+            submitBada(token, GRADE_ALL_OK);
+        }
+        submitBada(bearer("DGU-0002"), GRADE_ALL_OK);
+        mockMvc.perform(get("/api/v1/jamo/{j}", "ㄷ").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.recentWritings.length()").value(3));
     }
 
     @Test
