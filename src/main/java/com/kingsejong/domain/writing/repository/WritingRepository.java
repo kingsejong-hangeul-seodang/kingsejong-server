@@ -24,6 +24,16 @@ public interface WritingRepository extends JpaRepository<Writing, Long> {
             """)
     List<WritingRow> findGradedRows(@Param("userId") Long userId, @Param("cursor") Long cursor, Pageable pageable);
 
+    /** 판정이 끝난 내 기록 최신순, 판정 결과까지 (필기 원본은 빼고). */
+    @Query("""
+            select new com.kingsejong.domain.writing.repository.RecentWritingRow(
+                w.id, w.contentId, w.stage, w.target, w.createdAt, w.grade)
+            from Writing w
+            where w.userId = :userId and w.status = com.kingsejong.domain.writing.entity.WritingStatus.GRADED
+            order by w.id desc
+            """)
+    List<RecentWritingRow> findRecentGraded(@Param("userId") Long userId, Pageable pageable);
+
     /** 그날 맞게 쓴 서로 다른 콘텐츠 수 (일일 챌린지). */
     @Query("""
             select count(distinct w.contentId) from Writing w
