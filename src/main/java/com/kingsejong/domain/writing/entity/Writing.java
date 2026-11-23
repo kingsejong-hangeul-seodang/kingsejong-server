@@ -30,7 +30,8 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "writings", indexes = {
         @Index(name = "idx_writings_user_date", columnList = "user_id, study_date"),
-        @Index(name = "idx_writings_user_content_stage", columnList = "user_id, content_id, stage")
+        @Index(name = "idx_writings_user_content_stage", columnList = "user_id, content_id, stage"),
+        @Index(name = "idx_writings_user_id", columnList = "user_id, id")
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Writing extends BaseTimeEntity {
@@ -81,6 +82,10 @@ public class Writing extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean perfect;
 
+    /** 획순이 다른 칸 수 (엔진 판정에서 mark = stroke). 기록 목록의 "획순 1곳". 판정 저장 때 계산. */
+    @Column(name = "stroke_error_count")
+    private Integer strokeErrorCount;
+
     /** 이번 제출로 얻은 경험치. */
     @Column(name = "exp_gained", nullable = false)
     private int expGained;
@@ -102,6 +107,13 @@ public class Writing extends BaseTimeEntity {
         this.grade = grade;
         this.correct = grade.path("correct").asBoolean(false);
         this.perfect = grade.path("perfect").asBoolean(false);
+        int strokeCells = 0;
+        for (JsonNode cell : grade.path("cells")) {
+            if ("stroke".equals(cell.path("mark").asText())) {
+                strokeCells++;
+            }
+        }
+        this.strokeErrorCount = strokeCells;
         this.status = WritingStatus.GRADED;
     }
 

@@ -28,6 +28,7 @@ class EngineClientTest {
 
     private HttpServer server;
     private final AtomicReference<String> lastBody = new AtomicReference<>();
+    private final AtomicReference<String> lastPath = new AtomicReference<>();
     private volatile int status = 200;
     private volatile String response = "{}";
     private volatile long delayMs = 0;
@@ -37,6 +38,7 @@ class EngineClientTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
             lastBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            lastPath.set(exchange.getRequestURI().getPath());
             try {
                 Thread.sleep(delayMs);
             } catch (InterruptedException ignored) {
@@ -158,6 +160,41 @@ class EngineClientTest {
                 new HttpTimeoutException("read"))).getErrorCode()).isEqualTo(ErrorCode.ENGINE_TIMEOUT);
         assertThat(EngineClient.toAccessError(new ResourceAccessException("x",
                 new java.net.ConnectException("refused"))).getErrorCode()).isEqualTo(ErrorCode.ENGINE_UNAVAILABLE);
+    }
+
+    @Test
+    void 정답_획은_글자를_경로에_넣어_묻고_strokes를_준다() {
+        response = "{\"char\":\"다\",\"strokes\":[{\"order\":1,\"points\":[[0.1,0.2],[0.5,0.2]]}],\"engineVersion\":\"t\"}";
+        JsonNode strokes = client(Duration.ofSeconds(2)).reference("다").orElseThrow();
+        assertThat(lastPath.get()).isEqualTo("/reference/다");
+        assertThat(strokes.get(0).get("order").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void 정답_획_사전에_없으면_빈_값() {
+        status = 404;
+        response = "{\"code\":\"NOT_FOUND\",\"message\":\"정답 획 데이터에 없는 글자예요: 뷁\",\"details\":[],\"engineVersion\":\"t\"}";
+        assertThat(client(Duration.ofSeconds(2)).reference("뷁")).isEmpty();
+    }
+
+    @Test
+    void 엔진이_정답_획_주소를_모르면_404라도_ENGINE_ERROR() {
+        status = 404;
+        response = "{\"code\":\"NOT_FOUND\",\"message\":\"없는 주소예요\",\"details\":[],\"engineVersion\":\"t\"}";
+        assertThatThrownBy(() -> client(Duration.ofSeconds(2)).reference("다"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ENGINE_ERROR);
+    }
+
+    @Test
+    void 엔진에_정답_획_사전이_없으면_ENGINE_UNAVAILABLE() {
+        status = 503;
+        response = "{\"code\":\"REFERENCE_UNAVAILABLE\",\"message\":\"x\",\"details\":[],\"engineVersion\":\"t\"}";
+        assertThatThrownBy(() -> client(Duration.ofSeconds(2)).reference("다"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ENGINE_UNAVAILABLE);
     }
 
     private void assertError(EngineClient client, ErrorCode expected) {
