@@ -1,0 +1,9 @@
+[
+  { "key": "artist-haneulbit", "mode": "kpop", "name": "하늘빛", "imageUrl": null },
+  { "key": "artist-dalmuri", "mode": "kpop", "name": "달무리", "imageUrl": null },
+  { "key": "artist-byeolmuri", "mode": "kpop", "name": "별무리", "imageUrl": null },
+  { "key": "artist-eunhasu", "mode": "kpop", "name": "은하수", "imageUrl": null },
+  { "key": "drama-seodang-spring", "mode": "kdrama", "name": "서당의 봄", "imageUrl": null },
+  { "key": "drama-palace-night", "mode": "kdrama", "name": "궁궐의 밤", "imageUrl": null },
+  { "key": "drama-market-street", "mode": "kdrama", "name": "시장 골목", "imageUrl": null }
+]

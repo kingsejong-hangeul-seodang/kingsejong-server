@@ -6,6 +6,8 @@ import com.kingsejong.domain.content.entity.ContentKind;
 import com.kingsejong.domain.content.entity.ContentLine;
 import com.kingsejong.domain.content.entity.ContentTask;
 import com.kingsejong.domain.content.repository.ContentRepository;
+import com.kingsejong.domain.taste.service.TasteService;
+import org.springframework.core.annotation.Order;
 import com.kingsejong.global.common.Mode;
 import com.kingsejong.global.common.Stage;
 import com.kingsejong.global.seed.SeedReader;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
  * 정답 문장이 교정 엔진 규칙에 안 맞으면 서버가 켜지지 않는다 (시드 실수를 바로 알기 위해).
  */
 @Slf4j
+@Order(2) // 취향 시드(TasteSeeder) 다음
 @Component
 @RequiredArgsConstructor
 public class ContentSeeder implements ApplicationRunner {
@@ -46,6 +49,7 @@ public class ContentSeeder implements ApplicationRunner {
 
     private final SeedReader seedReader;
     private final ContentRepository contentRepository;
+    private final TasteService tasteService;
 
     record LineSeed(String text, Double startSec, Double endSec, String translation) {
     }
@@ -55,7 +59,7 @@ public class ContentSeeder implements ApplicationRunner {
 
     record ContentSeed(String key, Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
                        String youtubeVideoId, Double startSec, Double endSec, boolean embeddable,
-                       String situation, List<LineSeed> lines, List<TaskSeed> tasks) {
+                       String situation, List<LineSeed> lines, List<TaskSeed> tasks, String taste) {
     }
 
     @Override
@@ -80,9 +84,12 @@ public class ContentSeeder implements ApplicationRunner {
                         .title(seed.title()).sortOrder(sortOrder).build();
                 created++;
             }
+            Long tasteId = seed.taste() == null ? null : tasteService.findIdBySeedKey(seed.taste())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "시드 콘텐츠 '" + seed.title() + "': 없는 취향 key " + seed.taste()));
             content.update(seed.mode(), seed.kind(), seed.title(), seed.source(), seed.thumbnailUrl(),
                     seed.youtubeVideoId(), seed.startSec(), seed.endSec(), seed.embeddable(),
-                    seed.situation(), sortOrder);
+                    seed.situation(), sortOrder, tasteId);
 
             List<LineSeed> lines = seed.lines() != null ? seed.lines() : List.of();
             List<ContentLine> newLines = new ArrayList<>();

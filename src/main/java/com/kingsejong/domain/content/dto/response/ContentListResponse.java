@@ -31,7 +31,7 @@ public record ContentListResponse(List<Item> items) {
             boolean perfect
     ) {
 
-        public static Item of(Content content, ContentTask task, boolean completed, boolean perfect) {
+        public static Item of(Content content, ContentTask task, boolean tasteMatched, boolean completed, boolean perfect) {
             boolean hidden = task.getStage() == Stage.ADVANCED;
             return new Item(
                     content.getId(),
@@ -42,7 +42,7 @@ public record ContentListResponse(List<Item> items) {
                     content.getThumbnailUrl(),
                     task.getStage().getWriteMode(),
                     content.durationSec(),
-                    false, // 취향(tastes)은 아직 없음
+                    tasteMatched,
                     hidden ? null : task.getTarget(),
                     hidden ? null : task.cellCount(),
                     hidden ? null : task.wordCount(),
