@@ -36,7 +36,7 @@ class ReferenceControllerTest extends IntegrationTest {
 
         mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "바다바").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk())
-                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, containsString("max-age=86400")))
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private"))
                 .andExpect(jsonPath("$.font").value("NotoSansKR-Light"))
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].char").value("바"))
@@ -55,10 +55,28 @@ class ReferenceControllerTest extends IntegrationTest {
         when(engineClient.reference(eq("뷁"))).thenReturn(Optional.empty());
         when(engineClient.reference(eq("ㄷ"))).thenAnswer(inv -> Optional.of(objectMapper.readTree("[{\"order\":1,\"points\":[[0,0]]}]")));
 
-        mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "뷁ㄷ").header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001")))
+        String token = bearer("DGU-0001");
+        mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "뷁ㄷ").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].char").value("ㄷ"));
+        // "없음"도 기억해서 다시 묻지 않는다 (10분)
+        mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "뷁").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items.length()").value(0));
+        verify(engineClient, times(1)).reference(eq("뷁"));
+    }
+
+    @Test
+    void 엔진_오류는_기억하지_않아서_엔진이_돌아오면_바로_된다() throws Exception {
+        String token = bearer("DGU-0001");
+        when(engineClient.reference(eq("꿳"))).thenThrow(new BusinessException(ErrorCode.ENGINE_TIMEOUT))
+                .thenAnswer(inv -> Optional.of(objectMapper.readTree("[{\"order\":1,\"points\":[[0,0]]}]")));
+        mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "꿳").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isGatewayTimeout());
+        mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "꿳").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].char").value("꿳"));
     }
 
     @Test

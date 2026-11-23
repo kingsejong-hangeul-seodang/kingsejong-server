@@ -173,8 +173,18 @@ class EngineClientTest {
     @Test
     void 정답_획_사전에_없으면_빈_값() {
         status = 404;
-        response = "{\"code\":\"NOT_FOUND\",\"message\":\"x\",\"details\":[],\"engineVersion\":\"t\"}";
+        response = "{\"code\":\"NOT_FOUND\",\"message\":\"정답 획 데이터에 없는 글자예요: 뷁\",\"details\":[],\"engineVersion\":\"t\"}";
         assertThat(client(Duration.ofSeconds(2)).reference("뷁")).isEmpty();
+    }
+
+    @Test
+    void 엔진이_정답_획_주소를_모르면_404라도_ENGINE_ERROR() {
+        status = 404;
+        response = "{\"code\":\"NOT_FOUND\",\"message\":\"없는 주소예요\",\"details\":[],\"engineVersion\":\"t\"}";
+        assertThatThrownBy(() -> client(Duration.ofSeconds(2)).reference("다"))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ENGINE_ERROR);
     }
 
     @Test

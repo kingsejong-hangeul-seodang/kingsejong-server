@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,25 +34,45 @@ public class ReferenceService {
     static final int MAX_CHARS = 30;
     private static final Pattern HANGUL_CHAR = Pattern.compile("[가-힣ㄱ-ㅣ]");
 
+    /** "사전에 없음"은 10분만 기억한다 (엔진 사전이 바뀌면 다시 묻도록). 있는 글자는 계속 기억. */
+    static final Duration MISSING_TTL = Duration.ofMinutes(10);
+
     private final EngineClient engineClient;
-    private final Map<String, Optional<JsonNode>> cache = new ConcurrentHashMap<>();
+    private final Clock clock = Clock.systemUTC();
+    private final Map<String, JsonNode> found = new ConcurrentHashMap<>();
+    private final Map<String, Instant> missingUntil = new ConcurrentHashMap<>();
 
     @Value("${app.engine.reference-font:NotoSansKR-Light}")
     private String font;
 
-    public StrokeReferenceResponse getStrokes(String chars) {
+    /** 요청 순서대로(같은 글자는 한 번). complete = 요청한 글자를 모두 찾았는지 (아니면 브라우저 캐시를 안 붙임). */
+    public Result getStrokes(String chars) {
         List<String> unique = parse(chars);
         List<StrokeReferenceResponse.Item> items = new ArrayList<>();
+        Instant now = clock.instant();
         for (String ch : unique) {
-            Optional<JsonNode> strokes = cache.get(ch);
+            JsonNode strokes = found.get(ch);
             if (strokes == null) {
-                // 엔진에 연결이 안 되면 여기서 503·504가 나간다 (기억에 없는 글자가 하나라도 있을 때만)
-                strokes = engineClient.reference(ch);
-                cache.put(ch, strokes);
+                Instant until = missingUntil.get(ch);
+                if (until != null && now.isBefore(until)) {
+                    continue;
+                }
+                // 엔진에 연결이 안 되면 여기서 503·504가 나간다 (기억에 없는 글자가 하나라도 있을 때만). 오류는 기억하지 않는다
+                Optional<JsonNode> fetched = engineClient.reference(ch);
+                if (fetched.isEmpty()) {
+                    missingUntil.put(ch, now.plus(MISSING_TTL));
+                    continue;
+                }
+                strokes = fetched.get();
+                found.put(ch, strokes);
+                missingUntil.remove(ch);
             }
-            strokes.ifPresent(s -> items.add(new StrokeReferenceResponse.Item(ch, s)));
+            items.add(new StrokeReferenceResponse.Item(ch, strokes));
         }
-        return new StrokeReferenceResponse(font, items);
+        return new Result(new StrokeReferenceResponse(font, items), items.size() == unique.size());
+    }
+
+    public record Result(StrokeReferenceResponse response, boolean complete) {
     }
 
     /** 공백 없는 한글 음절·자모 1~30자. 같은 글자는 한 번만. */

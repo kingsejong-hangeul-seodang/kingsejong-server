@@ -95,7 +95,8 @@ public class EngineClient {
             }
             return Optional.of(body.get("strokes"));
         } catch (RestClientResponseException e) {
-            if (e.getStatusCode().value() == 404) {
+            // 404는 "사전에 없는 글자"일 때만 빈 값. 엔진이 이 주소를 모르는 옛 버전이면("없는 주소예요") 엔진 오류로 본다
+            if (e.getStatusCode().value() == 404 && isMissingChar(e.getResponseBodyAsString())) {
                 return Optional.empty();
             }
             log.error("Engine reference error {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
@@ -108,6 +109,13 @@ public class EngineClient {
             throw new BusinessException(ErrorCode.ENGINE_ERROR);
         }
     }
+
+    private static boolean isMissingChar(String body) {
+        return body != null && body.contains(MISSING_CHAR_MESSAGE);
+    }
+
+    /** 엔진 app/main.py get_reference의 "사전에 없는 글자" 메시지 앞부분. 엔진 팀에 전용 오류 코드를 요청해 두었다. */
+    static final String MISSING_CHAR_MESSAGE = "정답 획 데이터에 없는 글자";
 
     /** 엔진 상태 { status, engineVersion }. 연결이 안 되면 null (헬스체크용이라 예외를 던지지 않음). */
     public JsonNode health() {

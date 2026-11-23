@@ -25,8 +25,11 @@ public class ReferenceController {
     @Operation(summary = "정답 획", description = "chars = 공백 없는 한글 음절·자모 1~30자. 사전에 없는 글자는 items에서 빠진다. 하루 캐시")
     @GetMapping("/strokes")
     public ResponseEntity<StrokeReferenceResponse> getStrokes(@RequestParam String chars) {
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePrivate())
-                .body(referenceService.getStrokes(chars));
+        ReferenceService.Result result = referenceService.getStrokes(chars);
+        // 빠진 글자가 있으면 브라우저가 그 빈 결과를 하루 동안 붙들지 않게 캐시하지 않는다
+        CacheControl cache = result.complete()
+                ? CacheControl.maxAge(Duration.ofDays(1)).cachePrivate()
+                : CacheControl.noStore();
+        return ResponseEntity.ok().cacheControl(cache).body(result.response());
     }
 }
