@@ -75,6 +75,10 @@ public class Content extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean embeddable;
 
+    /** 이 콘텐츠의 가수·작품 (취향 카드). 고른 사용자에게 "고른 가수" 배지와 먼저 보여 주기. 기본 연습은 null. */
+    @Column(name = "taste_id")
+    private Long tasteId;
+
     /** 장면 설명 (B-05). */
     @Column(length = 300)
     private String situation;
@@ -118,7 +122,8 @@ public class Content extends BaseTimeEntity {
     /** 시드로 내용을 덮어쓴다 (seedKey는 그대로). */
     public void update(Mode mode, ContentKind kind, String title, String source, String thumbnailUrl,
                        String youtubeVideoId, Double startSec, Double endSec, boolean embeddable,
-                       String situation, int sortOrder) {
+                       String situation, int sortOrder, Long tasteId) {
+        this.tasteId = tasteId;
         this.mode = mode;
         this.kind = kind;
         this.title = title;
