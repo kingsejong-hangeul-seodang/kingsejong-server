@@ -60,6 +60,8 @@ app:
     base-url: ${ENGINE_BASE_URL}
     connect-timeout: 2s
     read-timeout: 10s
+    # 엔진 정답 획 사전을 만든 폰트 (응답의 font). 엔진이 동국체 사전으로 바꾸면 같이 바꾼다
+    reference-font: NotoSansKR-Light
 
 # =====================================================================
 # local — `docker compose up -d` 로 띄운 postgres 에 붙는다
