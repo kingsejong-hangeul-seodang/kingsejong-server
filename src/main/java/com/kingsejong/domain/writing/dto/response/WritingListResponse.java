@@ -1,7 +1,7 @@
 package com.kingsejong.domain.writing.dto.response;
 
 import com.kingsejong.domain.content.service.ContentSummary;
-import com.kingsejong.domain.writing.entity.Writing;
+import com.kingsejong.domain.writing.repository.WritingRow;
 import com.kingsejong.global.common.Mode;
 import com.kingsejong.global.common.Stage;
 
@@ -25,34 +25,20 @@ public record WritingListResponse(List<Item> items, String nextCursor) {
             OffsetDateTime createdAt
     ) {
 
-        public static Item of(Writing writing, ContentSummary content) {
+        public static Item of(WritingRow row, ContentSummary content) {
             return new Item(
-                    writing.getId(),
-                    writing.getContentId(),
+                    row.id(),
+                    row.contentId(),
                     content != null ? content.title() : "",
                     content != null ? content.source() : null,
                     content != null ? content.mode() : null,
-                    writing.getStage(),
-                    writing.getTarget(),
-                    writing.isCorrect(),
-                    writing.isPerfect(),
-                    strokeErrorCount(writing),
-                    writing.getCreatedAt()
+                    row.stage(),
+                    row.target(),
+                    row.correct(),
+                    row.perfect(),
+                    row.strokeErrorCount() != null ? row.strokeErrorCount() : 0, // 컬럼 생기기 전 기록은 0
+                    row.createdAt()
             );
-        }
-
-        /** 획순 오류 칸 수 = 엔진 판정에서 mark가 stroke인 칸 수 ("획순 1곳" 표시). */
-        static int strokeErrorCount(Writing writing) {
-            if (writing.getGrade() == null || !writing.getGrade().path("cells").isArray()) {
-                return 0;
-            }
-            int count = 0;
-            for (var cell : writing.getGrade().get("cells")) {
-                if ("stroke".equals(cell.path("mark").asText())) {
-                    count++;
-                }
-            }
-            return count;
         }
     }
 }
