@@ -139,6 +139,45 @@ class LevelTestControllerTest extends IntegrationTest {
     }
 
     @Test
+    void 실패한_단계를_다시_내서_통과하면_다음으로_간다() throws Exception {
+        String token = bearer("DGU-0004");
+        submit(token, 1, true);
+        submit(token, 2, false).andExpect(jsonPath("$.finished").value(true));
+        submit(token, 2, true).andExpect(status().isOk())
+                .andExpect(jsonPath("$.passed").value(true))
+                .andExpect(jsonPath("$.finished").value(false))
+                .andExpect(jsonPath("$.steps.length()").value(2));
+        submit(token, 3, true).andExpect(jsonPath("$.recommendedStage").value("advanced"));
+        // 다 끝난 뒤 3단계를 다시 내도 된다 (2단계 통과 상태)
+        submit(token, 3, false).andExpect(jsonPath("$.recommendedStage").value("intermediate"));
+    }
+
+    @Test
+    void 다른_사람의_진행은_섞이지_않는다() throws Exception {
+        submit(bearer("DGU-0001"), 1, true);
+        submit(bearer("DGU-0004"), 2, true).andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void 삼단계_칸_수_경계와_단계_값() throws Exception {
+        String token = bearer("DGU-0004");
+        submit(token, 1, true);
+        submit(token, 2, true);
+        doReturn(objectMapper.readTree("{\"correct\":true,\"cells\":[]}")).when(engineClient).grade(any());
+        for (int[] c : new int[][]{{7, 422}, {8, 200}, {9, 200}, {30, 200}, {31, 422}}) {
+            mockMvc.perform(post("/api/v1/level-test/steps/{s}", 3).header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON).content(body(c[0])))
+                    .andExpect(status().is(c[1]));
+        }
+        mockMvc.perform(post("/api/v1/level-test/steps/{s}", 0).header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body(3)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/v1/level-test/steps/{s}", "abc").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body(3)))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     void 토큰이_없으면_401() throws Exception {
         mockMvc.perform(get("/api/v1/level-test")).andExpect(status().isUnauthorized());
     }

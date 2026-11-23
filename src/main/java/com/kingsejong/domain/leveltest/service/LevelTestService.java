@@ -9,7 +9,8 @@ import com.kingsejong.domain.leveltest.entity.LevelTestProgress;
 import com.kingsejong.domain.leveltest.repository.LevelTestProgressRepository;
 import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.service.UserService;
-import com.kingsejong.domain.writing.service.WritingService;
+import com.kingsejong.domain.writing.dto.request.WritingCreateRequest;
+import com.kingsejong.global.validation.CellRules;
 import com.kingsejong.global.common.Stage;
 import com.kingsejong.global.error.BusinessException;
 import com.kingsejong.global.error.ErrorCode;
@@ -51,7 +52,7 @@ public class LevelTestService {
         User user = userService.getUser(userId);
         LevelTestCatalog.Step def = LevelTestCatalog.get(step);
         checkOrder(userId, step);
-        WritingService.checkCells(def.stage(), def.target(), request.cells());
+        CellRules.check(def.stage(), def.target(), request.cells().stream().map(WritingCreateRequest.Cell::index).toList());
 
         // 엔진 호출은 트랜잭션 밖 (쓰기 제출과 같은 이유)
         JsonNode grade = engineClient.grade(new EngineGradeRequest(
@@ -64,6 +65,9 @@ public class LevelTestService {
         boolean passed = grade.path("correct").asBoolean(false);
 
         return transactionTemplate.execute(status -> {
+            // 같은 사용자의 단계 저장을 한 번에 하나씩 (첫 제출이 겹치거나, 엔진을 기다리는 사이 1단계를 다시 낸 경우)
+            userService.getUserForUpdate(userId);
+            checkOrder(userId, step); // 잠근 뒤 다시: 기다리는 사이 앞 단계가 초기화됐으면 422
             LevelTestProgress progress = progressRepository.findByUserId(userId)
                     .orElseGet(() -> progressRepository.save(new LevelTestProgress(userId)));
             progress.record(step, passed);
