@@ -113,7 +113,7 @@ public class WritingService {
      * - index는 0부터 빠짐없이 순서대로
      * - 초보·중수: 칸 수 = 정답에서 공백을 뺀 글자 수 / 고수: 칸 수 ≥ 정답 칸 수(띄어쓰기 포함)
      */
-    private static void checkCells(Stage stage, String target, List<WritingCreateRequest.Cell> cells) {
+    public static void checkCells(Stage stage, String target, List<WritingCreateRequest.Cell> cells) {
         for (int i = 0; i < cells.size(); i++) {
             if (cells.get(i).index() != i) {
                 throw invalid("cells[" + i + "].index", "index는 0부터 빠짐없이 순서대로 와야 해요");
