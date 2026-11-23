@@ -24,6 +24,9 @@ class WritingQueryTest extends IntegrationTest {
     @MockitoBean
     EngineClient engineClient;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    com.kingsejong.domain.content.repository.ContentRepository contentRepository;
+
     private static final String GRADE_WITH_STROKE = "{\"engineVersion\":\"test\",\"correct\":true,\"perfect\":false,"
             + "\"cells\":[{\"index\":0,\"mark\":\"stroke\"},{\"index\":1,\"mark\":\"none\"}],\"sejong\":{\"text\":\"t\"}}";
 
@@ -132,6 +135,52 @@ class WritingQueryTest extends IntegrationTest {
                 .andExpect(jsonPath("$.details[0].field").value("size"));
         mockMvc.perform(get("/api/v1/writings").param("size", "51").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void 획순_오류가_없으면_0이고_제목은_그_난이도의_카드_제목이다() throws Exception {
+        String token = bearer("DGU-0002"); // 중수
+        submit(token, "basic", "intermediate", 1, "{\"correct\":true,\"perfect\":true,\"cells\":[{\"index\":0,\"mark\":\"none\"}]}");
+        mockMvc.perform(get("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items[0].title").value("여행 표현 1"))
+                .andExpect(jsonPath("$.items[0].strokeErrorCount").value(0));
+    }
+
+    @Test
+    void 숨긴_콘텐츠의_기록도_목록과_하나에서_계속_보인다() throws Exception {
+        String token = bearer("DGU-0001");
+        long id = submit(token, "kpop", "beginner", 0, GRADE_WITH_STROKE);
+        long contentId = contentId(token, "kpop", "beginner", 0);
+        contentRepository.findById(contentId).orElseThrow().deactivate();
+        flushAndClear();
+
+        mockMvc.perform(get("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items[0].writingId").value(id))
+                .andExpect(jsonPath("$.items[0].title").value("별빛 아래"));
+        mockMvc.perform(get("/api/v1/writings/{id}", id).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void 다른_사람의_기록은_내_목록에_안_섞인다() throws Exception {
+        submit(bearer("DGU-0002"), "kpop", "intermediate", 0, GRADE_WITH_STROKE);
+        String me = bearer("DGU-0001");
+        long mine = submit(me, "kpop", "beginner", 0, GRADE_WITH_STROKE);
+        mockMvc.perform(get("/api/v1/writings").header(HttpHeaders.AUTHORIZATION, me))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].writingId").value(mine));
+    }
+
+    @Test
+    void size_경계와_커서_0_음수() throws Exception {
+        String token = bearer("DGU-0001");
+        mockMvc.perform(get("/api/v1/writings").param("size", "1").header(HttpHeaders.AUTHORIZATION, token)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/writings").param("size", "50").header(HttpHeaders.AUTHORIZATION, token)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/writings").param("cursor", "").header(HttpHeaders.AUTHORIZATION, token)).andExpect(status().isOk());
+        for (String cursor : new String[]{"0", "-5"}) {
+            mockMvc.perform(get("/api/v1/writings").param("cursor", cursor).header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isUnprocessableEntity());
+        }
     }
 
     @Test

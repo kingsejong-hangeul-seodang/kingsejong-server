@@ -7,6 +7,7 @@ import com.kingsejong.domain.writing.dto.response.WritingListResponse;
 import com.kingsejong.domain.writing.entity.Writing;
 import com.kingsejong.domain.writing.entity.WritingStatus;
 import com.kingsejong.domain.writing.repository.WritingRepository;
+import com.kingsejong.domain.writing.repository.WritingRow;
 import com.kingsejong.global.error.BusinessException;
 import com.kingsejong.global.error.ErrorCode;
 import com.kingsejong.global.error.ErrorResponse;
@@ -30,17 +31,17 @@ public class WritingQueryService {
     /** 최신순. cursor는 앞 응답의 nextCursor(그 페이지 마지막 writingId). 없으면 처음부터. */
     public WritingListResponse getWritings(Long userId, String cursor, int size) {
         long before = parseCursor(cursor);
-        List<Writing> rows = writingRepository.findGradedPage(userId, before, PageRequest.of(0, size + 1));
+        List<WritingRow> rows = writingRepository.findGradedRows(userId, before, PageRequest.of(0, size + 1));
         boolean hasMore = rows.size() > size;
-        List<Writing> page = hasMore ? rows.subList(0, size) : rows;
+        List<WritingRow> page = hasMore ? rows.subList(0, size) : rows;
 
         Map<String, ContentSummary> contents = contentService.getSummaries(
-                page.stream().map(Writing::getContentId).distinct().toList(),
-                page.stream().map(Writing::getStage).distinct().toList());
+                page.stream().map(WritingRow::contentId).distinct().toList(),
+                page.stream().map(WritingRow::stage).distinct().toList());
         List<WritingListResponse.Item> items = page.stream()
-                .map(w -> WritingListResponse.Item.of(w, contents.get(w.getContentId() + ":" + w.getStage().getCode())))
+                .map(r -> WritingListResponse.Item.of(r, contents.get(r.contentId() + ":" + r.stage().getCode())))
                 .toList();
-        String nextCursor = hasMore ? String.valueOf(page.get(page.size() - 1).getId()) : null;
+        String nextCursor = hasMore ? String.valueOf(page.get(page.size() - 1).id()) : null;
         return new WritingListResponse(items, nextCursor);
     }
 

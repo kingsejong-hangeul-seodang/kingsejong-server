@@ -13,14 +13,16 @@ import java.util.List;
 
 public interface WritingRepository extends JpaRepository<Writing, Long> {
 
-    /** 판정이 끝난 내 기록, 최신순. cursor(writingId)보다 오래된 것만. 첫 페이지는 cursor = Long.MAX_VALUE. */
+    /** 판정이 끝난 내 기록, 최신순. cursor(writingId)보다 오래된 것만. 첫 페이지는 cursor = Long.MAX_VALUE. 목록에 필요한 칸만. */
     @Query("""
-            select w from Writing w
+            select new com.kingsejong.domain.writing.repository.WritingRow(
+                w.id, w.contentId, w.stage, w.target, w.correct, w.perfect, w.strokeErrorCount, w.createdAt)
+            from Writing w
             where w.userId = :userId and w.status = com.kingsejong.domain.writing.entity.WritingStatus.GRADED
               and w.id < :cursor
             order by w.id desc
             """)
-    List<Writing> findGradedPage(@Param("userId") Long userId, @Param("cursor") Long cursor, Pageable pageable);
+    List<WritingRow> findGradedRows(@Param("userId") Long userId, @Param("cursor") Long cursor, Pageable pageable);
 
     /** 그날 맞게 쓴 서로 다른 콘텐츠 수 (일일 챌린지). */
     @Query("""
