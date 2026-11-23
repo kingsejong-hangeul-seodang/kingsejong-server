@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,6 +66,23 @@ public class ContentService {
         }
         ContentTask task = getTask(content, stage);
         return new WritingTarget(content.getId(), task.getTarget(), findNextContentId(content, stage));
+    }
+
+    /**
+     * 기록 화면용 콘텐츠 정보. (contentId, stage) 쌍마다 그 난이도의 카드 제목을 쓴다. 숨긴 콘텐츠도 준다(지난 기록).
+     * 키는 contentId + ":" + stage.code
+     */
+    public Map<String, ContentSummary> getSummaries(Collection<Long> contentIds, Collection<Stage> stages) {
+        Map<String, ContentSummary> result = new HashMap<>();
+        for (Content content : contentRepository.findAllById(contentIds)) {
+            for (Stage stage : stages) {
+                String title = content.taskOf(stage).map(ContentTask::getTitle).filter(t -> t != null)
+                        .orElse(content.getTitle());
+                result.put(content.getId() + ":" + stage.getCode(),
+                        new ContentSummary(content.getId(), title, content.getSource(), content.getMode()));
+            }
+        }
+        return result;
     }
 
     /** 같은 모드에서 이 난이도로 쓸 수 있는 다음 콘텐츠. 마지막이면 null. */
