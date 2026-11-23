@@ -25,7 +25,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class JamoStatService {
 
-    /** 숙련도·자모 상세에서 "획 오류"로 보는 엔진 오류 종류. */
+    /**
+     * 숙련도·자모 상세에서 "획 오류"로 보는 엔진 오류 종류.
+     * EXTRA(더 쓴 획)는 엔진이 jamo를 null로 줘서 자모 집계에는 실제로 들어가지 않는다 (어느 자모의 획인지 모름).
+     */
     public static final Set<String> STROKE_ERRORS = Set.of("ORDER", "DIRECTION", "MISSING", "EXTRA");
 
     private final UserJamoStatRepository userJamoStatRepository;

@@ -170,6 +170,21 @@ class JamoControllerTest extends IntegrationTest {
     }
 
     @Test
+    void 방향_빠진_획도_stroke이고_맞는_설명이_없으면_message는_null() throws Exception {
+        String token = bearer("DGU-0001");
+        submitBada(token, "{\"correct\":true,\"perfect\":false,\"cells\":["
+                + "{\"index\":0,\"expected\":\"바\",\"charCorrect\":true,\"errors\":[{\"type\":\"DIRECTION\",\"jamo\":\"ㅂ\"}]},"
+                + "{\"index\":1,\"expected\":\"다\",\"charCorrect\":true,\"errors\":[{\"type\":\"MISSING\",\"jamo\":\"ㄷ\"}]}],"
+                + "\"explanations\":[{\"kind\":\"stroke\",\"jamo\":\"ㄷ\",\"cellIndexes\":[1],\"text\":\"다의 ㄷ에 빠진 획이 있어요.\"}]}");
+        mockMvc.perform(get("/api/v1/jamo/{j}", "ㅂ").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.recentWritings[0].result").value("stroke"))
+                .andExpect(jsonPath("$.recentWritings[0].message").isEmpty());
+        mockMvc.perform(get("/api/v1/jamo/{j}", "ㄷ").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.recentWritings[0].result").value("stroke"))
+                .andExpect(jsonPath("$.recentWritings[0].message").value("다의 ㄷ에 빠진 획이 있어요."));
+    }
+
+    @Test
     void 도감에_없는_자모는_404() throws Exception {
         String token = bearer("DGU-0001");
         for (String j : new String[]{"ㄳ", "a", "가"}) {
