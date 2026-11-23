@@ -38,7 +38,8 @@ public class ReferenceService {
     static final Duration MISSING_TTL = Duration.ofMinutes(10);
 
     private final EngineClient engineClient;
-    private final Clock clock = Clock.systemUTC();
+    /** 테스트에서 만료를 확인하려고 바꿀 수 있게 둔다. */
+    Clock clock = Clock.systemUTC();
     private final Map<String, JsonNode> found = new ConcurrentHashMap<>();
     private final Map<String, Instant> missingUntil = new ConcurrentHashMap<>();
 
