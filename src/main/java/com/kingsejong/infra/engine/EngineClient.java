@@ -17,6 +17,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * 교정 엔진(FastAPI) 호출. 주소는 app.engine.base-url (환경 변수 ENGINE_BASE_URL).
@@ -77,6 +78,44 @@ public class EngineClient {
             throw new BusinessException(ErrorCode.ENGINE_ERROR);
         }
     }
+
+    /**
+     * 글자 하나의 정답 획 (엔진 GET /reference/{글자}). 엔진 응답의 strokes 배열을 그대로 준다.
+     * 정답 획 사전에 없는 글자면 Optional.empty(). 엔진에 사전이 없으면(503) ENGINE_UNAVAILABLE.
+     */
+    public Optional<JsonNode> reference(String ch) {
+        try {
+            JsonNode body = gradeClient.get()
+                    .uri(builder -> builder.path("/reference/{char}").build(ch))
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (body == null || !body.path("strokes").isArray()) {
+                log.error("Engine returned an unexpected reference body: {}", body);
+                throw new BusinessException(ErrorCode.ENGINE_ERROR);
+            }
+            return Optional.of(body.get("strokes"));
+        } catch (RestClientResponseException e) {
+            // 404는 "사전에 없는 글자"일 때만 빈 값. 엔진이 이 주소를 모르는 옛 버전이면("없는 주소예요") 엔진 오류로 본다
+            if (e.getStatusCode().value() == 404 && isMissingChar(e.getResponseBodyAsString())) {
+                return Optional.empty();
+            }
+            log.error("Engine reference error {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(e.getStatusCode().value() == 503
+                    ? ErrorCode.ENGINE_UNAVAILABLE : ErrorCode.ENGINE_ERROR);
+        } catch (ResourceAccessException e) {
+            throw toAccessError(e);
+        } catch (RestClientException e) {
+            log.error("Engine reference call failed", e);
+            throw new BusinessException(ErrorCode.ENGINE_ERROR);
+        }
+    }
+
+    private static boolean isMissingChar(String body) {
+        return body != null && body.contains(MISSING_CHAR_MESSAGE);
+    }
+
+    /** 엔진 app/main.py get_reference의 "사전에 없는 글자" 메시지 앞부분. 엔진 팀에 전용 오류 코드를 요청해 두었다. */
+    static final String MISSING_CHAR_MESSAGE = "정답 획 데이터에 없는 글자";
 
     /** 엔진 상태 { status, engineVersion }. 연결이 안 되면 null (헬스체크용이라 예외를 던지지 않음). */
     public JsonNode health() {

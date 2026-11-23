@@ -38,7 +38,8 @@
         "stage": "advanced",
         "target": "바다 위 별빛 아래"
       }
-    ]
+    ],
+    "taste": "artist-haneulbit"
   },
   {
     "key": "kpop-missed-you",
@@ -73,7 +74,8 @@
         "stage": "advanced",
         "target": "오늘 보고 싶었어"
       }
-    ]
+    ],
+    "taste": "artist-dalmuri"
   },
   {
     "key": "kdrama-seodang-spring-1",
@@ -108,7 +110,8 @@
         "stage": "advanced",
         "target": "오늘부터 우리는 친구"
       }
-    ]
+    ],
+    "taste": "drama-seodang-spring"
   },
   {
     "key": "basic-meal-1",

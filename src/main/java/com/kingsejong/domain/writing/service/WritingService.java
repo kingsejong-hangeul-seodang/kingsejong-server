@@ -50,7 +50,7 @@ public class WritingService {
 
     public WritingResponse submit(Long userId, WritingCreateRequest request) {
         User user = userService.getUser(userId);
-        WritingTarget target = contentService.getWritingTarget(request.contentId(), request.stage());
+        WritingTarget target = contentService.getWritingTarget(userId, request.contentId(), request.stage());
         checkCells(request.stage(), target.target(), request.cells());
 
         JsonNode canvas = objectMapper.valueToTree(request.canvas());
