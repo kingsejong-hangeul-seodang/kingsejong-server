@@ -30,6 +30,12 @@ class LevelTestControllerTest extends IntegrationTest {
     EngineClient engineClient;
 
     @org.springframework.beans.factory.annotation.Autowired
+    com.kingsejong.domain.leveltest.repository.LevelTestProgressRepository progressRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    com.kingsejong.domain.user.repository.UserRepository userRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
     com.kingsejong.domain.writing.repository.WritingRepository writingRepository;
 
     private static final int[] CELLS = {0, 3, 2, 9};
@@ -175,6 +181,23 @@ class LevelTestControllerTest extends IntegrationTest {
         mockMvc.perform(post("/api/v1/level-test/steps/{s}", "abc").header(HttpHeaders.AUTHORIZATION, token)
                         .contentType(MediaType.APPLICATION_JSON).content(body(3)))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void 엔진을_기다리는_사이_앞_단계가_초기화되면_422이고_결과를_남기지_않는다() throws Exception {
+        String token = bearer("DGU-0004");
+        submit(token, 1, true);
+        Long userId = userRepository.findByLoginCode("DGU-0004").orElseThrow().getId();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            progressRepository.findByUserId(userId).orElseThrow().record(1, false); // 그사이 1단계를 다시 내서 실패한 셈
+            return objectMapper.readTree("{\"correct\":true,\"cells\":[]}");
+        }).when(engineClient).grade(any());
+
+        mockMvc.perform(post("/api/v1/level-test/steps/{s}", 2).header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body(2)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0].field").value("step"));
+        assertThat(progressRepository.findByUserId(userId).orElseThrow().getStep2Passed()).isNull();
     }
 
     @Test
