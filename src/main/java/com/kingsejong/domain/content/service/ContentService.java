@@ -3,11 +3,13 @@ package com.kingsejong.domain.content.service;
 import com.kingsejong.domain.content.dto.response.ContentDetailResponse;
 import com.kingsejong.domain.content.dto.response.ContentListResponse;
 import com.kingsejong.domain.content.entity.Content;
+import com.kingsejong.domain.content.entity.ContentKind;
 import com.kingsejong.domain.content.entity.ContentTask;
 import com.kingsejong.domain.content.repository.ContentRepository;
 import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.service.UserService;
 import com.kingsejong.domain.writing.service.WritingStatsService;
+import com.kingsejong.global.common.Hangul;
 import com.kingsejong.global.common.Mode;
 import com.kingsejong.global.common.Stage;
 import com.kingsejong.global.error.BusinessException;
@@ -16,10 +18,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -83,6 +87,34 @@ public class ContentService {
             }
         }
         return result;
+    }
+
+    /** 자모 상세의 [연습하기]: 그 자모를 쓰는 초보 자모 연습 콘텐츠 (보이는 것만). */
+    public Optional<Long> findJamoPracticeContentId(String jamo) {
+        return contentRepository.findAllByModeAndStage(Mode.BASIC, Stage.BEGINNER).stream()
+                .filter(c -> c.getKind() == ContentKind.JAMO)
+                .filter(c -> c.taskOf(Stage.BEGINNER).map(t -> t.getTarget().equals(jamo)).orElse(false))
+                .map(Content::getId)
+                .findFirst();
+    }
+
+    /** 자모 상세의 예시 글자: 보이는 콘텐츠의 정답 문장에서 이 자모가 든 음절을 limit개까지 (나온 순서). */
+    public List<String> findExampleChars(String jamo, int limit) {
+        java.util.LinkedHashSet<String> chars = new java.util.LinkedHashSet<>();
+        for (Mode mode : Mode.values()) {
+            for (Stage stage : Stage.values()) {
+                for (Content content : contentRepository.findAllByModeAndStage(mode, stage)) {
+                    String target = content.taskOf(stage).map(ContentTask::getTarget).orElse("");
+                    for (int i = 0; i < target.length() && chars.size() < limit; i++) {
+                        String ch = String.valueOf(target.charAt(i));
+                        if (ch.charAt(0) >= '가' && ch.charAt(0) <= '힣' && Hangul.toJamo(ch).contains(jamo)) {
+                            chars.add(ch);
+                        }
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(chars);
     }
 
     /** 같은 모드에서 이 난이도로 쓸 수 있는 다음 콘텐츠. 마지막이면 null. */

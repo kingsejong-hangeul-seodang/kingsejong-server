@@ -177,6 +177,45 @@
     ]
   },
   {
+    "key": "jamo-giyeok",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㄱ · 기역",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㄱ",
+        "meaning": "giyeok"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ssanggiyeok",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㄲ · 쌍기역",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㄲ",
+        "meaning": "ssanggiyeok"
+      }
+    ]
+  },
+  {
+    "key": "jamo-nieun",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㄴ · 니은",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㄴ",
+        "meaning": "nieun"
+      }
+    ]
+  },
+  {
     "key": "jamo-digeut",
     "mode": "basic",
     "kind": "jamo",
@@ -186,6 +225,474 @@
         "stage": "beginner",
         "target": "ㄷ",
         "meaning": "digeut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ssangdigeut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㄸ · 쌍디귿",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㄸ",
+        "meaning": "ssangdigeut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-rieul",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㄹ · 리을",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㄹ",
+        "meaning": "rieul"
+      }
+    ]
+  },
+  {
+    "key": "jamo-mieum",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅁ · 미음",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅁ",
+        "meaning": "mieum"
+      }
+    ]
+  },
+  {
+    "key": "jamo-bieup",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅂ · 비읍",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅂ",
+        "meaning": "bieup"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ssangbieup",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅃ · 쌍비읍",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅃ",
+        "meaning": "ssangbieup"
+      }
+    ]
+  },
+  {
+    "key": "jamo-siot",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅅ · 시옷",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅅ",
+        "meaning": "siot"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ssangsiot",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅆ · 쌍시옷",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅆ",
+        "meaning": "ssangsiot"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ieung",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅇ · 이응",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅇ",
+        "meaning": "ieung"
+      }
+    ]
+  },
+  {
+    "key": "jamo-jieut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅈ · 지읒",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅈ",
+        "meaning": "jieut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ssangjieut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅉ · 쌍지읒",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅉ",
+        "meaning": "ssangjieut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-chieut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅊ · 치읓",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅊ",
+        "meaning": "chieut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-kieuk",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅋ · 키읔",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅋ",
+        "meaning": "kieuk"
+      }
+    ]
+  },
+  {
+    "key": "jamo-tieut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅌ · 티읕",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅌ",
+        "meaning": "tieut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-pieup",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅍ · 피읖",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅍ",
+        "meaning": "pieup"
+      }
+    ]
+  },
+  {
+    "key": "jamo-hieut",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅎ · 히읗",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅎ",
+        "meaning": "hieut"
+      }
+    ]
+  },
+  {
+    "key": "jamo-a",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅏ · 아",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅏ",
+        "meaning": "a"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ae",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅐ · 애",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅐ",
+        "meaning": "ae"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ya",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅑ · 야",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅑ",
+        "meaning": "ya"
+      }
+    ]
+  },
+  {
+    "key": "jamo-yae",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅒ · 얘",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅒ",
+        "meaning": "yae"
+      }
+    ]
+  },
+  {
+    "key": "jamo-eo",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅓ · 어",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅓ",
+        "meaning": "eo"
+      }
+    ]
+  },
+  {
+    "key": "jamo-e",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅔ · 에",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅔ",
+        "meaning": "e"
+      }
+    ]
+  },
+  {
+    "key": "jamo-yeo",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅕ · 여",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅕ",
+        "meaning": "yeo"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ye",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅖ · 예",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅖ",
+        "meaning": "ye"
+      }
+    ]
+  },
+  {
+    "key": "jamo-o",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅗ · 오",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅗ",
+        "meaning": "o"
+      }
+    ]
+  },
+  {
+    "key": "jamo-wa",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅘ · 와",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅘ",
+        "meaning": "wa"
+      }
+    ]
+  },
+  {
+    "key": "jamo-wae",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅙ · 왜",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅙ",
+        "meaning": "wae"
+      }
+    ]
+  },
+  {
+    "key": "jamo-oe",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅚ · 외",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅚ",
+        "meaning": "oe"
+      }
+    ]
+  },
+  {
+    "key": "jamo-yo",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅛ · 요",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅛ",
+        "meaning": "yo"
+      }
+    ]
+  },
+  {
+    "key": "jamo-u",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅜ · 우",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅜ",
+        "meaning": "u"
+      }
+    ]
+  },
+  {
+    "key": "jamo-wo",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅝ · 워",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅝ",
+        "meaning": "wo"
+      }
+    ]
+  },
+  {
+    "key": "jamo-we",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅞ · 웨",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅞ",
+        "meaning": "we"
+      }
+    ]
+  },
+  {
+    "key": "jamo-wi",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅟ · 위",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅟ",
+        "meaning": "wi"
+      }
+    ]
+  },
+  {
+    "key": "jamo-yu",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅠ · 유",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅠ",
+        "meaning": "yu"
+      }
+    ]
+  },
+  {
+    "key": "jamo-eu",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅡ · 으",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅡ",
+        "meaning": "eu"
+      }
+    ]
+  },
+  {
+    "key": "jamo-ui",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅢ · 의",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅢ",
+        "meaning": "ui"
+      }
+    ]
+  },
+  {
+    "key": "jamo-i",
+    "mode": "basic",
+    "kind": "jamo",
+    "title": "ㅣ · 이",
+    "tasks": [
+      {
+        "stage": "beginner",
+        "target": "ㅣ",
+        "meaning": "i"
       }
     ]
   }

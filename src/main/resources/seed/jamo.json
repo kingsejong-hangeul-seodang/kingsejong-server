@@ -1,0 +1,480 @@
+[
+  {
+    "jamo": "ㄱ",
+    "name": "기역",
+    "romanization": "giyeok",
+    "type": "consonant",
+    "steps": [
+      "위 가로획을 왼쪽에서 오른쪽으로 긋고 꺾어서 아래로"
+    ],
+    "commonMistake": "꺾는 부분을 둥글게 쓰면 다른 글자처럼 보여요."
+  },
+  {
+    "jamo": "ㄲ",
+    "name": "쌍기역",
+    "romanization": "ssanggiyeok",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 ㄱ을 작게",
+      "오른쪽 ㄱ을 같은 크기로"
+    ],
+    "commonMistake": "두 ㄱ의 크기를 맞춰요."
+  },
+  {
+    "jamo": "ㄴ",
+    "name": "니은",
+    "romanization": "nieun",
+    "type": "consonant",
+    "steps": [
+      "위에서 아래로 내려와 오른쪽으로 꺾어서"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㄷ",
+    "name": "디귿",
+    "romanization": "digeut",
+    "type": "consonant",
+    "steps": [
+      "위 가로획을 왼쪽에서 오른쪽으로",
+      "세로로 내려와 아래 가로획까지 이어서"
+    ],
+    "commonMistake": "아래 획을 먼저 쓰는 경우가 많아요."
+  },
+  {
+    "jamo": "ㄸ",
+    "name": "쌍디귿",
+    "romanization": "ssangdigeut",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 ㄷ의 위 가로획",
+      "왼쪽 ㄷ의 세로획과 아래 가로획",
+      "오른쪽 ㄷ의 위 가로획",
+      "오른쪽 ㄷ의 세로획과 아래 가로획"
+    ],
+    "commonMistake": "왼쪽 ㄷ을 다 쓰고 오른쪽 ㄷ을 써요."
+  },
+  {
+    "jamo": "ㄹ",
+    "name": "리을",
+    "romanization": "rieul",
+    "type": "consonant",
+    "steps": [
+      "위 가로획을 긋고 꺾어서 아래로",
+      "가운데 가로획",
+      "왼쪽에서 내려와 아래 가로획까지"
+    ],
+    "commonMistake": "가운데 가로획을 빠뜨리기 쉬워요."
+  },
+  {
+    "jamo": "ㅁ",
+    "name": "미음",
+    "romanization": "mieum",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 세로획",
+      "위 가로획을 긋고 꺾어서 아래로",
+      "아래 가로획"
+    ],
+    "commonMistake": "한 번에 네모를 그리지 않아요."
+  },
+  {
+    "jamo": "ㅂ",
+    "name": "비읍",
+    "romanization": "bieup",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 세로획",
+      "오른쪽 세로획",
+      "가운데 가로획",
+      "아래 가로획"
+    ],
+    "commonMistake": "가로획을 세로획보다 먼저 쓰는 경우가 많아요."
+  },
+  {
+    "jamo": "ㅃ",
+    "name": "쌍비읍",
+    "romanization": "ssangbieup",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 ㅂ의 왼쪽 세로획",
+      "왼쪽 ㅂ의 오른쪽 세로획",
+      "왼쪽 ㅂ의 가운데 가로획",
+      "왼쪽 ㅂ의 아래 가로획",
+      "오른쪽 ㅂ의 왼쪽 세로획",
+      "오른쪽 ㅂ의 오른쪽 세로획",
+      "오른쪽 ㅂ의 가운데 가로획",
+      "오른쪽 ㅂ의 아래 가로획"
+    ],
+    "commonMistake": "왼쪽 ㅂ을 다 쓰고 오른쪽 ㅂ을 써요."
+  },
+  {
+    "jamo": "ㅅ",
+    "name": "시옷",
+    "romanization": "siot",
+    "type": "consonant",
+    "steps": [
+      "가운데에서 왼쪽 아래로 삐쳐서",
+      "가운데에서 오른쪽 아래로"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅆ",
+    "name": "쌍시옷",
+    "romanization": "ssangsiot",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 ㅅ의 왼쪽 획",
+      "왼쪽 ㅅ의 오른쪽 획",
+      "오른쪽 ㅅ의 왼쪽 획",
+      "오른쪽 ㅅ의 오른쪽 획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅇ",
+    "name": "이응",
+    "romanization": "ieung",
+    "type": "consonant",
+    "steps": [
+      "위에서 시작해 왼쪽으로 돌아 한 번에 동그라미"
+    ],
+    "commonMistake": "오른쪽으로 돌리면 획 방향이 거꾸로예요."
+  },
+  {
+    "jamo": "ㅈ",
+    "name": "지읒",
+    "romanization": "jieut",
+    "type": "consonant",
+    "steps": [
+      "위 가로획을 긋고 왼쪽 아래로 삐쳐서",
+      "가운데에서 오른쪽 아래로"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅉ",
+    "name": "쌍지읒",
+    "romanization": "ssangjieut",
+    "type": "consonant",
+    "steps": [
+      "왼쪽 ㅈ의 첫 획",
+      "왼쪽 ㅈ의 둘째 획",
+      "오른쪽 ㅈ의 첫 획",
+      "오른쪽 ㅈ의 둘째 획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅊ",
+    "name": "치읓",
+    "romanization": "chieut",
+    "type": "consonant",
+    "steps": [
+      "위 짧은 꼭지",
+      "가로획을 긋고 왼쪽 아래로 삐쳐서",
+      "가운데에서 오른쪽 아래로"
+    ],
+    "commonMistake": "위 꼭지를 마지막에 쓰는 경우가 많아요."
+  },
+  {
+    "jamo": "ㅋ",
+    "name": "키읔",
+    "romanization": "kieuk",
+    "type": "consonant",
+    "steps": [
+      "위 가로획을 긋고 꺾어서 아래로",
+      "가운데 가로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅌ",
+    "name": "티읕",
+    "romanization": "tieut",
+    "type": "consonant",
+    "steps": [
+      "위 가로획",
+      "가운데 가로획",
+      "왼쪽에서 내려와 아래 가로획까지"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅍ",
+    "name": "피읖",
+    "romanization": "pieup",
+    "type": "consonant",
+    "steps": [
+      "위 가로획",
+      "왼쪽 세로획",
+      "오른쪽 세로획",
+      "아래 가로획"
+    ],
+    "commonMistake": "세로획을 먼저 쓰는 경우가 많아요."
+  },
+  {
+    "jamo": "ㅎ",
+    "name": "히읗",
+    "romanization": "hieut",
+    "type": "consonant",
+    "steps": [
+      "위 짧은 꼭지",
+      "가로획",
+      "아래 동그라미"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅏ",
+    "name": "아",
+    "romanization": "a",
+    "type": "vowel",
+    "steps": [
+      "세로획을 위에서 아래로",
+      "오른쪽 짧은 가로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅐ",
+    "name": "애",
+    "romanization": "ae",
+    "type": "vowel",
+    "steps": [
+      "왼쪽 세로획",
+      "가운데 짧은 가로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅑ",
+    "name": "야",
+    "romanization": "ya",
+    "type": "vowel",
+    "steps": [
+      "세로획",
+      "위 짧은 가로획",
+      "아래 짧은 가로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅒ",
+    "name": "얘",
+    "romanization": "yae",
+    "type": "vowel",
+    "steps": [
+      "왼쪽 세로획",
+      "위 짧은 가로획",
+      "아래 짧은 가로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅓ",
+    "name": "어",
+    "romanization": "eo",
+    "type": "vowel",
+    "steps": [
+      "왼쪽 짧은 가로획",
+      "세로획을 위에서 아래로"
+    ],
+    "commonMistake": "세로획을 먼저 쓰는 경우가 많아요."
+  },
+  {
+    "jamo": "ㅔ",
+    "name": "에",
+    "romanization": "e",
+    "type": "vowel",
+    "steps": [
+      "짧은 가로획",
+      "가운데 세로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅕ",
+    "name": "여",
+    "romanization": "yeo",
+    "type": "vowel",
+    "steps": [
+      "위 짧은 가로획",
+      "아래 짧은 가로획",
+      "세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅖ",
+    "name": "예",
+    "romanization": "ye",
+    "type": "vowel",
+    "steps": [
+      "위 짧은 가로획",
+      "아래 짧은 가로획",
+      "가운데 세로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅗ",
+    "name": "오",
+    "romanization": "o",
+    "type": "vowel",
+    "steps": [
+      "가운데 짧은 세로획",
+      "아래 가로획"
+    ],
+    "commonMistake": "가로획을 먼저 쓰는 경우가 많아요."
+  },
+  {
+    "jamo": "ㅘ",
+    "name": "와",
+    "romanization": "wa",
+    "type": "vowel",
+    "steps": [
+      "ㅗ의 짧은 세로획",
+      "ㅗ의 가로획",
+      "ㅏ의 세로획",
+      "ㅏ의 짧은 가로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅙ",
+    "name": "왜",
+    "romanization": "wae",
+    "type": "vowel",
+    "steps": [
+      "ㅗ의 짧은 세로획",
+      "ㅗ의 가로획",
+      "ㅐ의 왼쪽 세로획",
+      "ㅐ의 짧은 가로획",
+      "ㅐ의 오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅚ",
+    "name": "외",
+    "romanization": "oe",
+    "type": "vowel",
+    "steps": [
+      "ㅗ의 짧은 세로획",
+      "ㅗ의 가로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅛ",
+    "name": "요",
+    "romanization": "yo",
+    "type": "vowel",
+    "steps": [
+      "왼쪽 짧은 세로획",
+      "오른쪽 짧은 세로획",
+      "아래 가로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅜ",
+    "name": "우",
+    "romanization": "u",
+    "type": "vowel",
+    "steps": [
+      "가로획",
+      "가운데에서 아래로 짧은 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅝ",
+    "name": "워",
+    "romanization": "wo",
+    "type": "vowel",
+    "steps": [
+      "ㅜ의 가로획",
+      "ㅜ의 짧은 세로획",
+      "ㅓ의 짧은 가로획",
+      "ㅓ의 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅞ",
+    "name": "웨",
+    "romanization": "we",
+    "type": "vowel",
+    "steps": [
+      "ㅜ의 가로획",
+      "ㅜ의 짧은 세로획",
+      "ㅔ의 짧은 가로획",
+      "ㅔ의 가운데 세로획",
+      "ㅔ의 오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅟ",
+    "name": "위",
+    "romanization": "wi",
+    "type": "vowel",
+    "steps": [
+      "ㅜ의 가로획",
+      "ㅜ의 짧은 세로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅠ",
+    "name": "유",
+    "romanization": "yu",
+    "type": "vowel",
+    "steps": [
+      "가로획",
+      "왼쪽 짧은 세로획",
+      "오른쪽 짧은 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅡ",
+    "name": "으",
+    "romanization": "eu",
+    "type": "vowel",
+    "steps": [
+      "왼쪽에서 오른쪽으로 가로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅢ",
+    "name": "의",
+    "romanization": "ui",
+    "type": "vowel",
+    "steps": [
+      "가로획",
+      "오른쪽 세로획"
+    ],
+    "commonMistake": null
+  },
+  {
+    "jamo": "ㅣ",
+    "name": "이",
+    "romanization": "i",
+    "type": "vowel",
+    "steps": [
+      "위에서 아래로 세로획"
+    ],
+    "commonMistake": null
+  }
+]

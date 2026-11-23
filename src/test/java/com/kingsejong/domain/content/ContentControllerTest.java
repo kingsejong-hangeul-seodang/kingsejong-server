@@ -56,10 +56,11 @@ class ContentControllerTest extends IntegrationTest {
         mockMvc.perform(get("/api/v1/contents").param("mode", "basic").param("stage", "beginner")
                         .header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items.length()").value(4))
+                .andExpect(jsonPath("$.items.length()").value(43)) // 기본 연습 3 + 자모 40
                 .andExpect(jsonPath("$.items[0].title").value("밥"))
                 .andExpect(jsonPath("$.items[3].kind").value("jamo"))
-                .andExpect(jsonPath("$.items[3].target").value("ㄷ"));
+                .andExpect(jsonPath("$.items[3].title").value("ㄱ · 기역"))
+                .andExpect(jsonPath("$.items[3].target").value("ㄱ"));
     }
 
     @Test

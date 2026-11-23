@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kingsejong.domain.content.service.ContentService;
 import com.kingsejong.domain.content.service.WritingTarget;
+import com.kingsejong.domain.jamo.service.JamoStatService;
 import com.kingsejong.domain.user.entity.User;
 import com.kingsejong.domain.user.service.UserService;
 import com.kingsejong.domain.writing.dto.request.WritingCreateRequest;
@@ -31,7 +32,7 @@ import java.util.List;
  * 엔진 호출(최대 10초) 동안 DB 트랜잭션을 잡고 있지 않도록 세 단계로 나눈다.
  * 1. 저장 (트랜잭션): 필기 원본을 먼저 저장 → 엔진이 실패해도 원본이 남는다
  * 2. 엔진 호출 (트랜잭션 밖)
- * 3. 판정 저장 + 보상 (트랜잭션)
+ * 3. 판정 저장 + 보상 + 자모 숙련도 (트랜잭션)
  */
 @Slf4j
 @Service
@@ -43,6 +44,7 @@ public class WritingService {
     private final ContentService contentService;
     private final EngineClient engineClient;
     private final RewardService rewardService;
+    private final JamoStatService jamoStatService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -88,6 +90,7 @@ public class WritingService {
                 Writing writing = writingRepository.findById(saved.getId()).orElseThrow();
                 writing.graded(grade);
                 RewardResponse reward = rewardService.reward(writing);
+                jamoStatService.record(userId, grade); // 자모 숙련도 (보상이 잡은 사용자 잠금 안에서)
                 return WritingResponse.of(writing, reward, target.nextContentId());
             });
         } catch (RuntimeException e) {
