@@ -44,17 +44,17 @@ class TasteConcurrencyTest extends IntegrationTest {
     }
 
     @Test
-    void 동시에_두_번_저장해도_둘_다_204이고_선택이_섞이지_않는다() throws Exception {
+    void 동시에_여러_번_저장해도_모두_204이고_선택이_섞이지_않는다() throws Exception {
         String token = bearer("DGU-0004");
         List<Long> ids = tasteRepository.findAllByModeAndActiveTrueOrderBySortOrderAscIdAsc(Mode.KPOP)
                 .stream().map(t -> t.getId()).toList();
         String body = "{\"mode\":\"kpop\",\"tasteIds\":[" + ids.get(0) + "," + ids.get(1) + "]}";
 
         CountDownLatch start = new CountDownLatch(1);
-        ExecutorService pool = Executors.newFixedThreadPool(2);
+        ExecutorService pool = Executors.newFixedThreadPool(8);
         try {
             List<Future<Integer>> results = new ArrayList<>();
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < 8; i++) {
                 results.add(pool.submit(() -> {
                     start.await();
                     return mockMvc.perform(put("/api/v1/me/tastes").header(HttpHeaders.AUTHORIZATION, token)

@@ -19,6 +19,9 @@ class TasteControllerTest extends IntegrationTest {
     @org.springframework.beans.factory.annotation.Autowired
     com.kingsejong.domain.taste.seed.TasteSeeder tasteSeeder;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    com.kingsejong.domain.taste.service.TasteService tasteService;
+
     @Test
     void 모드별_취향_카드를_순서대로_준다() throws Exception {
         String token = bearer("DGU-0001");
@@ -170,6 +173,23 @@ class TasteControllerTest extends IntegrationTest {
         tasteSeeder.run(null);
         flushAndClear();
         org.assertj.core.api.Assertions.assertThat(tasteRepository.findById(extra.getId()).orElseThrow().isActive()).isFalse();
+        // 숨긴 취향 key는 콘텐츠 시드에서 없는 key로 본다
+        org.assertj.core.api.Assertions.assertThat(tasteService.findIdBySeedKey("artist-removed")).isEmpty();
+    }
+
+    @Test
+    void 저장하면_숨긴_취향의_옛_선택도_지운다() throws Exception {
+        String token = bearer("DGU-0001");
+        long dalmuri = tasteId(token, "kpop", 1);
+        save(token, "kpop", "[" + dalmuri + "]").andExpect(status().isNoContent());
+        tasteRepository.findById(dalmuri).orElseThrow().deactivate();
+        flushAndClear();
+        save(token, "kpop", "[]").andExpect(status().isNoContent());
+        tasteRepository.findById(dalmuri).orElseThrow().update(com.kingsejong.global.common.Mode.KPOP, "달무리", null, 2); // 다시 켜짐
+        flushAndClear();
+
+        mockMvc.perform(get("/api/v1/tastes").param("mode", "kpop").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items[1].selected").value(false));
     }
 
     private org.springframework.test.web.servlet.ResultActions save(String token, String mode, String ids) throws Exception {

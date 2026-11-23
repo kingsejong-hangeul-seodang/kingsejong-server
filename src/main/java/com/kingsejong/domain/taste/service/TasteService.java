@@ -55,8 +55,8 @@ public class TasteService {
                         "tasteIds", id + "은(는) 이 모드의 취향이 아니에요")));
             }
         }
-        List<Long> modeTasteIds = tasteRepository.findAllByModeAndActiveTrueOrderBySortOrderAscIdAsc(request.mode()).stream()
-                .map(Taste::getId).toList();
+        // 숨긴 취향의 옛 선택도 같이 지운다 (나중에 다시 켜졌을 때 안 고른 선택이 되살아나지 않게)
+        List<Long> modeTasteIds = tasteRepository.findAllIdsByMode(request.mode());
         if (!modeTasteIds.isEmpty()) {
             userTasteRepository.deleteByUserIdAndTasteIdIn(userId, modeTasteIds);
         }
@@ -68,9 +68,9 @@ public class TasteService {
         return Set.copyOf(userTasteRepository.findActiveTasteIds(userId));
     }
 
-    /** 콘텐츠 시드가 취향 key로 id를 찾을 때. */
+    /** 콘텐츠 시드가 취향 key로 id를 찾을 때. 숨긴 취향은 없는 것으로 봐서 콘텐츠 시드가 기동에서 걸리게 한다. */
     public java.util.Optional<Long> findIdBySeedKey(String seedKey) {
-        return tasteRepository.findBySeedKey(seedKey).map(Taste::getId);
+        return tasteRepository.findBySeedKeyAndActiveTrue(seedKey).map(Taste::getId);
     }
 
     private static void checkMode(Mode mode) {
