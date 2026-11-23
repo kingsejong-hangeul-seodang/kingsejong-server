@@ -13,10 +13,7 @@ import com.kingsejong.domain.writing.dto.response.WritingResponse;
 import com.kingsejong.domain.writing.entity.Writing;
 import com.kingsejong.domain.writing.repository.WritingRepository;
 import com.kingsejong.global.common.KstDate;
-import com.kingsejong.global.common.Stage;
-import com.kingsejong.global.error.BusinessException;
-import com.kingsejong.global.error.ErrorCode;
-import com.kingsejong.global.error.ErrorResponse;
+import com.kingsejong.global.validation.CellRules;
 import com.kingsejong.infra.engine.EngineClient;
 import com.kingsejong.infra.engine.EngineGradeRequest;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.util.List;
 
 /**
  * 쓰기 제출 (API 명세 3.8 "서버가 하는 일").
@@ -51,7 +47,7 @@ public class WritingService {
     public WritingResponse submit(Long userId, WritingCreateRequest request) {
         User user = userService.getUser(userId);
         WritingTarget target = contentService.getWritingTarget(userId, request.contentId(), request.stage());
-        checkCells(request.stage(), target.target(), request.cells());
+        CellRules.check(request.stage(), target.target(), request.cells().stream().map(WritingCreateRequest.Cell::index).toList());
 
         JsonNode canvas = objectMapper.valueToTree(request.canvas());
         JsonNode cells = objectMapper.valueToTree(request.cells());
@@ -110,31 +106,4 @@ public class WritingService {
         }
     }
 
-    /**
-     * 칸 번호와 칸 수를 엔진과 같은 규칙으로 미리 검사한다 (엔진 app/schemas.py GradeRequest).
-     * 엔진에서 걸리면 502가 되므로 서버에서 422로 막는다.
-     * - index는 0부터 빠짐없이 순서대로
-     * - 초보·중수: 칸 수 = 정답에서 공백을 뺀 글자 수 / 고수: 칸 수 ≥ 정답 칸 수(띄어쓰기 포함)
-     */
-    private static void checkCells(Stage stage, String target, List<WritingCreateRequest.Cell> cells) {
-        for (int i = 0; i < cells.size(); i++) {
-            if (cells.get(i).index() != i) {
-                throw invalid("cells[" + i + "].index", "index는 0부터 빠짐없이 순서대로 와야 해요");
-            }
-        }
-        if (stage == Stage.ADVANCED) {
-            if (cells.size() < target.length()) {
-                throw invalid("cells", "칸이 " + target.length() + "개 이상이어야 해요");
-            }
-        } else {
-            int need = target.replace(" ", "").length();
-            if (cells.size() != need) {
-                throw invalid("cells", "칸이 " + need + "개여야 해요");
-            }
-        }
-    }
-
-    private static BusinessException invalid(String field, String message) {
-        return new BusinessException(ErrorCode.INVALID_REQUEST, List.of(new ErrorResponse.Detail(field, message)));
-    }
 }
