@@ -13,6 +13,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class TasteControllerTest extends IntegrationTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    com.kingsejong.domain.taste.repository.TasteRepository tasteRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    com.kingsejong.domain.taste.seed.TasteSeeder tasteSeeder;
+
     @Test
     void 모드별_취향_카드를_순서대로_준다() throws Exception {
         String token = bearer("DGU-0001");
@@ -66,6 +72,8 @@ class TasteControllerTest extends IntegrationTest {
         save(token, "kpop", "[" + drama + "]").andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.details[0].field").value("tasteIds"));
         save(token, "kpop", "[999999]").andExpect(status().isUnprocessableEntity());
+        save(token, "basic", "[]").andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0].field").value("mode"));
         save(token, "basic", "[]").andExpect(status().isUnprocessableEntity());
     }
 
@@ -100,6 +108,68 @@ class TasteControllerTest extends IntegrationTest {
         mockMvc.perform(get("/api/v1/tastes").param("mode", "kpop")).andExpect(status().isUnauthorized());
         mockMvc.perform(put("/api/v1/me/tastes").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"mode\":\"kpop\",\"tasteIds\":[]}")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 중복_id는_합쳐지고_tasteIds가_없거나_51개면_422() throws Exception {
+        String token = bearer("DGU-0001");
+        long haneul = tasteId(token, "kpop", 0);
+        save(token, "kpop", "[" + haneul + "," + haneul + "]").andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/v1/tastes").param("mode", "kpop").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items[0].selected").value(true));
+
+        mockMvc.perform(put("/api/v1/me/tastes").header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"mode\":\"kpop\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0].field").value("tasteIds"));
+        String many = String.join(",", java.util.Collections.nCopies(51, String.valueOf(haneul)));
+        save(token, "kpop", "[" + many + "]").andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void 숨긴_취향은_목록에_없고_고를_수_없고_배지도_안_붙는다() throws Exception {
+        String token = bearer("DGU-0001");
+        long dalmuri = tasteId(token, "kpop", 1);
+        save(token, "kpop", "[" + dalmuri + "]").andExpect(status().isNoContent());
+        tasteRepository.findById(dalmuri).orElseThrow().deactivate();
+        flushAndClear();
+
+        mockMvc.perform(get("/api/v1/tastes").param("mode", "kpop").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items.length()").value(3));
+        save(token, "kpop", "[" + dalmuri + "]").andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(get("/api/v1/contents").param("mode", "kpop").param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.items[0].title").value("별빛 아래"))
+                .andExpect(jsonPath("$.items[1].tasteMatched").value(false));
+    }
+
+    @Test
+    void 다음_글은_내_목록_순서를_따른다() throws Exception {
+        String token = bearer("DGU-0001");
+        save(token, "kpop", "[" + tasteId(token, "kpop", 1) + "]").andExpect(status().isNoContent()); // 달무리 → [보고 싶었어, 별빛 아래]
+        JsonNode items = objectMapper.readTree(mockMvc.perform(get("/api/v1/contents").param("mode", "kpop")
+                .param("stage", "beginner").header(HttpHeaders.AUTHORIZATION, token)).andReturn().getResponse().getContentAsString()).get("items");
+
+        mockMvc.perform(get("/api/v1/contents/{id}", items.get(0).get("id").asLong()).param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.nextContentId").value(items.get(1).get("id").asLong()));
+        mockMvc.perform(get("/api/v1/contents/{id}", items.get(1).get("id").asLong()).param("stage", "beginner")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(jsonPath("$.nextContentId").isEmpty());
+    }
+
+    @Test
+    void 시드를_다시_돌려도_늘지_않고_빠진_key는_숨긴다() throws Exception {
+        long before = tasteRepository.count();
+        tasteSeeder.run(null);
+        flushAndClear();
+        org.assertj.core.api.Assertions.assertThat(tasteRepository.count()).isEqualTo(before);
+
+        com.kingsejong.domain.taste.entity.Taste extra = tasteRepository.save(com.kingsejong.domain.taste.entity.Taste.builder()
+                .seedKey("artist-removed").mode(com.kingsejong.global.common.Mode.KPOP).name("옛 가수").build());
+        tasteSeeder.run(null);
+        flushAndClear();
+        org.assertj.core.api.Assertions.assertThat(tasteRepository.findById(extra.getId()).orElseThrow().isActive()).isFalse();
     }
 
     private org.springframework.test.web.servlet.ResultActions save(String token, String mode, String ids) throws Exception {

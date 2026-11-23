@@ -46,6 +46,10 @@ public class Taste extends BaseTimeEntity {
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;
 
+    /** 시드 JSON에서 빠지면 false: 목록·저장에서 빠지고 tasteMatched에도 안 쓴다 (사용자 선택 행은 남김). */
+    @Column(nullable = false)
+    private boolean active = true;
+
     @Builder
     private Taste(String seedKey, Mode mode, String name, String imageUrl, int sortOrder) {
         this.seedKey = seedKey;
@@ -57,5 +61,10 @@ public class Taste extends BaseTimeEntity {
         this.name = name;
         this.imageUrl = imageUrl;
         this.sortOrder = sortOrder;
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
     }
 }

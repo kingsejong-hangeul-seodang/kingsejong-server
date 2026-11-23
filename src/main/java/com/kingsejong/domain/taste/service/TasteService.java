@@ -6,6 +6,7 @@ import com.kingsejong.domain.taste.entity.Taste;
 import com.kingsejong.domain.taste.entity.UserTaste;
 import com.kingsejong.domain.taste.repository.TasteRepository;
 import com.kingsejong.domain.taste.repository.UserTasteRepository;
+import com.kingsejong.domain.user.service.UserService;
 import com.kingsejong.global.common.Mode;
 import com.kingsejong.global.error.BusinessException;
 import com.kingsejong.global.error.ErrorCode;
@@ -28,11 +29,12 @@ public class TasteService {
 
     private final TasteRepository tasteRepository;
     private final UserTasteRepository userTasteRepository;
+    private final UserService userService;
 
     public TasteListResponse getTastes(Long userId, Mode mode) {
         checkMode(mode);
         Set<Long> selected = selectedTasteIds(userId);
-        return new TasteListResponse(tasteRepository.findAllByModeOrderBySortOrderAscIdAsc(mode).stream()
+        return new TasteListResponse(tasteRepository.findAllByModeAndActiveTrueOrderBySortOrderAscIdAsc(mode).stream()
                 .map(taste -> TasteListResponse.Item.of(taste, selected.contains(taste.getId())))
                 .toList());
     }
@@ -41,17 +43,19 @@ public class TasteService {
     @Transactional
     public void saveTastes(Long userId, TasteSaveRequest request) {
         checkMode(request.mode());
+        // 같은 사용자의 저장을 한 번에 하나씩 (연타·재시도가 동시에 지우고 넣다가 겹치지 않게)
+        userService.getUserForUpdate(userId);
         Set<Long> requested = new LinkedHashSet<>(request.tasteIds());
         Map<Long, Taste> found = tasteRepository.findAllById(requested).stream()
                 .collect(Collectors.toMap(Taste::getId, Function.identity()));
         for (Long id : requested) {
             Taste taste = found.get(id);
-            if (taste == null || taste.getMode() != request.mode()) {
+            if (taste == null || !taste.isActive() || taste.getMode() != request.mode()) {
                 throw new BusinessException(ErrorCode.INVALID_REQUEST, List.of(new ErrorResponse.Detail(
                         "tasteIds", id + "은(는) 이 모드의 취향이 아니에요")));
             }
         }
-        List<Long> modeTasteIds = tasteRepository.findAllByModeOrderBySortOrderAscIdAsc(request.mode()).stream()
+        List<Long> modeTasteIds = tasteRepository.findAllByModeAndActiveTrueOrderBySortOrderAscIdAsc(request.mode()).stream()
                 .map(Taste::getId).toList();
         if (!modeTasteIds.isEmpty()) {
             userTasteRepository.deleteByUserIdAndTasteIdIn(userId, modeTasteIds);
@@ -61,8 +65,7 @@ public class TasteService {
 
     /** 내가 고른 취향 id 전체 (모든 모드). 콘텐츠 목록의 tasteMatched에 쓴다. */
     public Set<Long> selectedTasteIds(Long userId) {
-        return userTasteRepository.findAllByUserId(userId).stream()
-                .map(UserTaste::getTasteId).collect(Collectors.toSet());
+        return Set.copyOf(userTasteRepository.findActiveTasteIds(userId));
     }
 
     /** 콘텐츠 시드가 취향 key로 id를 찾을 때. */

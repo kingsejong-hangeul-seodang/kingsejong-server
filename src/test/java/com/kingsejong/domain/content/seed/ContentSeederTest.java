@@ -126,6 +126,14 @@ class ContentSeederTest extends IntegrationTest {
                 List.of(new ContentSeeder.LineSeed("자막", 12.0, 15.0, null))))).doesNotThrowAnyException();
     }
 
+    @Test
+    void 없는_취향_key를_가리키면_예외() {
+        ContentSeeder.ContentSeed seed = new ContentSeeder.ContentSeed("k-bad-taste", Mode.KPOP, ContentKind.CLIP, "t", null, null,
+                "ID", 1.0, 10.0, true, null, List.of(),
+                List.of(new ContentSeeder.TaskSeed(Stage.BEGINNER, "물", null, null)), "artist-nobody");
+        assertThatThrownBy(() -> seederWith(List.of(seed)).run(null)).isInstanceOf(IllegalStateException.class);
+    }
+
     private ContentSeeder.ContentSeed clip(String videoId, Double start, Double end, List<ContentSeeder.LineSeed> lines) {
         return new ContentSeeder.ContentSeed("k", Mode.KPOP, ContentKind.CLIP, "t", null, null,
                 videoId, start, end, true, null, lines, List.of(), null);

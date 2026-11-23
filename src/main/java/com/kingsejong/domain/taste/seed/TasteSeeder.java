@@ -22,7 +22,7 @@ import java.util.Set;
 
 /**
  * 취향 카드 시드 (seed/tastes.json). 콘텐츠 시드가 취향 key를 가리키므로 먼저 돈다. 모든 프로필.
- * key로 찾아서 덮어쓴다(upsert). JSON에서 지운 취향은 사용자 선택이 가리킬 수 있어서 지우지 않는다.
+ * key로 찾아서 덮어쓴다(upsert). JSON에서 지운 취향은 사용자 선택이 가리킬 수 있어서 지우지 않고 숨긴다(active = false).
  */
 @Slf4j
 @Order(1)
@@ -56,6 +56,9 @@ public class TasteSeeder implements ApplicationRunner {
             taste.update(seed.mode(), seed.name(), seed.imageUrl(), sortOrder);
             tasteRepository.save(taste);
         }
-        log.info("Seeded {} tastes", seeds.size());
+        // 시드에서 빠진 취향은 지우지 않고 숨긴다 (사용자 선택이 가리킬 수 있음)
+        List<Taste> removed = tasteRepository.findBySeedKeyNotInAndActiveTrue(keys);
+        removed.forEach(Taste::deactivate);
+        log.info("Seeded {} tastes, {} hidden", seeds.size(), removed.size());
     }
 }

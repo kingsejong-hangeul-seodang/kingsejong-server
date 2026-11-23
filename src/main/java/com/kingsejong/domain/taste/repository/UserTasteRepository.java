@@ -11,7 +11,12 @@ import java.util.List;
 
 public interface UserTasteRepository extends JpaRepository<UserTaste, Long> {
 
-    List<UserTaste> findAllByUserId(Long userId);
+    /** 내가 고른 취향 중 지금 보이는(active) 것의 id. */
+    @Query("""
+            select ut.tasteId from UserTaste ut, Taste t
+            where ut.tasteId = t.id and ut.userId = :userId and t.active = true
+            """)
+    List<Long> findActiveTasteIds(@Param("userId") Long userId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("delete from UserTaste ut where ut.userId = :userId and ut.tasteId in :tasteIds")
