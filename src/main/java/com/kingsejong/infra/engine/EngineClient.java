@@ -78,6 +78,24 @@ public class EngineClient {
         }
     }
 
+    public JsonNode reference(String chars) {
+        try {
+            JsonNode body = gradeClient.get()
+                    .uri("/reference?chars={chars}", chars)
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (body == null || !body.path("font").isTextual() || !body.path("items").isArray()) {
+                throw new BusinessException(ErrorCode.ENGINE_ERROR);
+            }
+            return body;
+        } catch (ResourceAccessException e) {
+            throw toAccessError(e);
+        } catch (RestClientException e) {
+            log.error("Engine reference call failed", e);
+            throw new BusinessException(ErrorCode.ENGINE_ERROR);
+        }
+    }
+
     /** 엔진 상태 { status, engineVersion }. 연결이 안 되면 null (헬스체크용이라 예외를 던지지 않음). */
     public JsonNode health() {
         try {
