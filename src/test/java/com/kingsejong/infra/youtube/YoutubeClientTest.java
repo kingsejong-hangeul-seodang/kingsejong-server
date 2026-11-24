@@ -21,6 +21,8 @@ class YoutubeClientTest {
     private HttpServer server;
     private volatile int oembedStatus = 200;
     private volatile String tracks;
+    private volatile int captionStatus = 200;
+    private volatile boolean privateVideo;
     private String base;
 
     @BeforeEach
@@ -32,10 +34,11 @@ class YoutubeClientTest {
                 + "{\"languageCode\":\"en\",\"baseUrl\":\"" + base + "/api/timedtext?en\"}]";
         server.createContext("/oembed", ex -> respond(ex, oembedStatus,
                 "{\"title\":\"NewJeans 'Ditto' MV\",\"author_name\":\"HYBE LABELS\",\"thumbnail_url\":\"https://i.ytimg.com/x.jpg\"}"));
-        server.createContext("/youtubei/v1/player", ex -> respond(ex, 200,
+        server.createContext("/youtubei/v1/player", ex -> respond(ex, 200, privateVideo
+                ? "{\"playabilityStatus\":{\"status\":\"LOGIN_REQUIRED\"}}" :
                 "{\"videoDetails\":{\"title\":\"Ditto\",\"author\":\"HYBE\",\"lengthSeconds\":\"333\"},"
                         + "\"captions\":{\"playerCaptionsTracklistRenderer\":{\"captionTracks\":" + tracks + "}}}"));
-        server.createContext("/api/timedtext", ex -> respond(ex, 200, ex.getRequestURI().getQuery().equals("manual")
+        server.createContext("/api/timedtext", ex -> respond(ex, captionStatus, ex.getRequestURI().getQuery().equals("manual")
                 ? "<timedtext format=\"3\"><body><p t=\"1000\" d=\"2000\">사람 자막</p></body></timedtext>"
                 : "<timedtext format=\"3\"><body><p t=\"1000\" d=\"2000\">자동 자막</p></body></timedtext>"));
         server.start();
@@ -127,5 +130,29 @@ class YoutubeClientTest {
                 new YoutubeVideo.Line(3, 4, "너를"),
                 new YoutubeVideo.Line(5, 6, "보고 싶어"))))
                 .containsExactly(new YoutubeVideo.Line(1, 4, "오늘도 너를"), new YoutubeVideo.Line(5, 6, "보고 싶어"));
+    }
+
+    @Test
+    void 자막_요청이_실패하면_502() {
+        captionStatus = 500;
+        assertThatThrownBy(() -> new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE"))
+                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.YOUTUBE_ERROR);
+    }
+
+    @Test
+    void 비공개_영상은_422_url() {
+        oembedStatus = 401;
+        privateVideo = true;
+        assertThatThrownBy(() -> new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE"))
+                .isInstanceOfSatisfying(BusinessException.class, e -> assertThat(e.getDetails().get(0).field()).isEqualTo("url"));
+    }
+
+    @Test
+    void 떨어진_시간에_다시_나온_같은_줄은_합치지_않는다() {
+        assertThat(CaptionParser.mergeRollUp(java.util.List.of(
+                new YoutubeVideo.Line(1, 2, "사랑해요"),
+                new YoutubeVideo.Line(7, 8, "사랑해요"),
+                new YoutubeVideo.Line(8.1, 9, "사랑해요 정말"))))
+                .containsExactly(new YoutubeVideo.Line(1, 2, "사랑해요"), new YoutubeVideo.Line(7, 9, "사랑해요 정말"));
     }
 }

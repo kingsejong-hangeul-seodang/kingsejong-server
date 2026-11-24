@@ -17,6 +17,7 @@ final class CaptionParser {
     private static final Pattern P = Pattern.compile("<p\\s+t=\"(\\d+)\"\\s+d=\"(\\d+)\"[^>]*>(.*?)</p>", Pattern.DOTALL);
     private static final Pattern TEXT = Pattern.compile(
             "<text\\s+start=\"([\\d.]+)\"\\s+dur=\"([\\d.]+)\"[^>]*>(.*?)</text>", Pattern.DOTALL);
+    private static final double ROLL_UP_GAP_SEC = 0.3;
     private static final Pattern TAG = Pattern.compile("<[^>]+>");
 
     private CaptionParser() {
@@ -55,13 +56,15 @@ final class CaptionParser {
 
     /**
      * 자동 자막(asr)은 같은 말이 겹쳐서 다시 나오는 모양(roll-up)이 흔하다.
-     * 앞 줄과 같거나 앞 줄을 포함하면 합치고(끝 시간 늘림), 앞 줄에 포함되면 버린다.
+     * 시간이 겹치거나 바로 이어질 때(ROLL_UP_GAP 안)만, 앞 줄과 같거나 앞 줄을 포함하면 합치고(끝 시간 늘림)
+     * 앞 줄에 포함되면 버린다. 몇 초 떨어져 다시 나오는 같은 후렴은 그대로 둔다.
      */
     static List<YoutubeVideo.Line> mergeRollUp(List<YoutubeVideo.Line> lines) {
         List<YoutubeVideo.Line> merged = new ArrayList<>();
         for (YoutubeVideo.Line line : lines) {
-            if (!merged.isEmpty()) {
-                YoutubeVideo.Line prev = merged.get(merged.size() - 1);
+            YoutubeVideo.Line last = merged.isEmpty() ? null : merged.get(merged.size() - 1);
+            if (last != null && line.startSec() <= last.endSec() + ROLL_UP_GAP_SEC) {
+                YoutubeVideo.Line prev = last;
                 if (line.text().contains(prev.text())) {
                     merged.set(merged.size() - 1, new YoutubeVideo.Line(prev.startSec(), Math.max(prev.endSec(), line.endSec()), line.text()));
                     continue;

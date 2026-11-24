@@ -224,6 +224,12 @@ class AdminContentControllerTest extends IntegrationTest {
         importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,"
                 + "\"lines\":[{\"text\":\"안녕\",\"startSec\":1,\"endSec\":2}]}")
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.details[0].field").value("lines[0]"));
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,"
+                + "\"lines\":[{\"text\":\"안녕\",\"startSec\":15,\"endSec\":16},{\"text\":\"반가워\",\"startSec\":11,\"endSec\":12}]}")
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.details[0].field").value("lines[1]"));
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,\"lines\":[],"
+                + "\"tasks\":{\"beginner\":{\"target\":\"친구\"},\"intermediate\":{\"target\":\"우리는 친구\"},\"advanced\":{\"target\":\"우리는 친구\"}}}")
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.lines.length()").value(0));
         long id = id(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,"
                 + "\"lines\":[{\"text\":\"오늘도 너를 기다렸어\",\"startSec\":11,\"endSec\":14,\"translation\":\"I waited for you again today\"}]}")
                 .andExpect(jsonPath("$.tasks.advanced.target").value("오늘도 너를 기다렸어"))

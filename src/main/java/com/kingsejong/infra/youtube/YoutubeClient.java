@@ -40,6 +40,8 @@ public class YoutubeClient {
     private static final String ANDROID_UA = "com.google.android.youtube/20.10.38 (Linux; U; Android 14)";
 
     private final RestClient restClient;
+    /** 자막 주소는 유튜브 응답이 주므로 리다이렉트를 따르지 않는다 (검사한 호스트만 부르게). */
+    private final RestClient captionClient;
     private final String baseUrl;
     private final URI base;
     private final ObjectMapper objectMapper;
@@ -53,6 +55,12 @@ public class YoutubeClient {
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(Duration.ofSeconds(10));
         this.restClient = RestClient.builder().requestFactory(factory).build();
+        JdkClientHttpRequestFactory noRedirect = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build());
+        noRedirect.setReadTimeout(Duration.ofSeconds(10));
+        this.captionClient = RestClient.builder().requestFactory(noRedirect).build();
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.base = URI.create(this.baseUrl);
         this.objectMapper = objectMapper;
@@ -142,10 +150,11 @@ public class YoutubeClient {
             return null;
         }
         try {
-            String xml = restClient.get().uri(uri)
+            String xml = captionClient.get().uri(uri)
                     .header("User-Agent", ANDROID_UA)
                     .exchange((req, res) -> {
                         if (!res.getStatusCode().is2xxSuccessful()) {
+                            log.warn("YouTube captions {} for {}", res.getStatusCode().value(), uri.getHost());
                             throw new BusinessException(ErrorCode.YOUTUBE_ERROR);
                         }
                         return readLimited(res.getBody());
@@ -162,7 +171,7 @@ public class YoutubeClient {
     /** 응답이 준 주소를 그대로 부르므로 유튜브(또는 설정한 base-url) 호스트만. */
     private boolean trustedCaptionHost(URI uri) {
         String host = uri.getHost();
-        if (host == null) {
+        if (host == null || uri.getScheme() == null) {
             return false;
         }
         if (host.equalsIgnoreCase(base.getHost()) && uri.getScheme().equalsIgnoreCase(base.getScheme())) {

@@ -4,6 +4,7 @@ import com.kingsejong.global.error.BusinessException;
 import com.kingsejong.global.error.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.cors.CorsUtils;
@@ -16,17 +17,22 @@ import java.security.MessageDigest;
  * 관리자 주소(/api/v1/admin/**) 확인. 관리자 화면이 없어서 Swagger·curl로 부르며, "X-Admin-Key" 헤더가 설정값과 같아야 한다.
  * 키가 없으면 401, 틀리면 403. 키는 환경 변수 ADMIN_KEY (local·test에만 기본값).
  */
+@Slf4j
 @Component
 public class AdminInterceptor implements HandlerInterceptor {
 
     public static final String HEADER = "X-Admin-Key";
     static final int MIN_LENGTH = 16;
+    private static final String LOCAL_DEFAULT = "kingsejong-local-admin-key";
 
     private final byte[] adminKey;
 
     public AdminInterceptor(@Value("${app.admin.key}") String adminKey) {
         if (adminKey == null || adminKey.length() < MIN_LENGTH) {
             throw new IllegalStateException("app.admin.key(ADMIN_KEY)는 " + MIN_LENGTH + "자 이상이어야 해요");
+        }
+        if (LOCAL_DEFAULT.equals(adminKey)) {
+            log.warn("관리자 키가 로컬 기본값이에요. 배포라면 SPRING_PROFILES_ACTIVE=prod와 ADMIN_KEY를 넣으세요");
         }
         this.adminKey = adminKey.getBytes(StandardCharsets.UTF_8);
     }
