@@ -75,20 +75,35 @@ public class TasteService {
     @Transactional
     public TasteRef findOrCreate(Mode mode, String name, boolean dryRun) {
         checkMode(mode);
-        String trimmed = name.trim();
-        java.util.Optional<Taste> found = tasteRepository.findFirstByModeAndNameAndActiveTrue(mode, trimmed);
+        String normalized = normalizeName(name);
+        java.util.Optional<Taste> found = tasteRepository.findFirstByModeAndNameAndActiveTrue(mode, normalized);
         if (found.isPresent()) {
-            return new TasteRef(found.get().getId(), found.get().getSeedKey(), trimmed, false);
+            return new TasteRef(found.get().getId(), found.get().getSeedKey(), normalized, false);
         }
-        String key = "yt:" + mode.getCode() + ":" + trimmed;
+        // key 길이(50) 안에 들게 이름 대신 해시: "yt:kdrama:" + 12자
+        String key = "yt:" + mode.getCode() + ":" + sha1(normalized).substring(0, 12);
         if (dryRun) {
-            return new TasteRef(null, key, trimmed, true);
+            return new TasteRef(null, key, normalized, true);
         }
         Taste taste = tasteRepository.findBySeedKey(key)
-                .orElseGet(() -> Taste.builder().seedKey(key).mode(mode).name(trimmed).sortOrder(1000).build());
-        taste.update(mode, trimmed, null, 1000);
+                .orElseGet(() -> Taste.builder().seedKey(key).mode(mode).name(normalized).sortOrder(1000).build());
+        taste.update(mode, normalized, null, 1000);
         tasteRepository.save(taste);
-        return new TasteRef(taste.getId(), key, trimmed, true);
+        return new TasteRef(taste.getId(), key, normalized, true);
+    }
+
+    /** 같은 이름이 공백·자모 조합(NFC/NFD) 차이로 다른 취향이 되지 않게. */
+    public static String normalizeName(String name) {
+        return java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFC).trim().replaceAll("\\s+", " ");
+    }
+
+    private static String sha1(String text) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-1")
+                    .digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /** created = 이번에 새로 만들었는지 (또는 dryRun이면 새로 만들 예정인지). */

@@ -29,7 +29,7 @@ public record YoutubeImportResponse(
         JsonNode seed
 ) {
 
-    public record Line(String text, double startSec, double endSec) {
+    public record Line(String text, double startSec, double endSec, String translation) {
     }
 
     public record Task(String target, String meaning, String source) {

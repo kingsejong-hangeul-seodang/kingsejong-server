@@ -20,12 +20,13 @@ import java.security.MessageDigest;
 public class AdminInterceptor implements HandlerInterceptor {
 
     public static final String HEADER = "X-Admin-Key";
+    static final int MIN_LENGTH = 16;
 
     private final byte[] adminKey;
 
     public AdminInterceptor(@Value("${app.admin.key}") String adminKey) {
-        if (adminKey == null || adminKey.length() < 8) {
-            throw new IllegalStateException("app.admin.key(ADMIN_KEY)는 8자 이상이어야 해요");
+        if (adminKey == null || adminKey.length() < MIN_LENGTH) {
+            throw new IllegalStateException("app.admin.key(ADMIN_KEY)는 " + MIN_LENGTH + "자 이상이어야 해요");
         }
         this.adminKey = adminKey.getBytes(StandardCharsets.UTF_8);
     }

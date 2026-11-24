@@ -63,7 +63,7 @@ app:
     # 엔진 정답 획 사전을 만든 폰트 (응답의 font). 엔진이 동국체 사전으로 바꾸면 같이 바꾼다
     reference-font: NotoSansKR-Light
   admin:
-    # 관리자 주소의 X-Admin-Key. 환경 변수 ADMIN_KEY 필수 (8자 이상). 기본값은 local·test 프로필에만 있다
+    # 관리자 주소의 X-Admin-Key. 환경 변수 ADMIN_KEY 필수 (16자 이상). 기본값은 local·test 프로필에만 있다
     key: ${ADMIN_KEY}
   youtube:
     base-url: https://www.youtube.com
@@ -98,7 +98,7 @@ app:
     # 로컬 엔진: 엔진 레포에서 .venv/bin/uvicorn app.main:app --port 8000
     base-url: ${ENGINE_BASE_URL:http://localhost:8000}
   admin:
-    key: ${ADMIN_KEY:local-admin-key}
+    key: ${ADMIN_KEY:kingsejong-local-admin-key}
 
 # =====================================================================
 # test — Testcontainers(@ServiceConnection)가 datasource 를 넣어 주므로 url 을 적지 않는다
@@ -120,7 +120,7 @@ app:
     # 테스트는 실제 엔진을 부르지 않는다 (닫힌 포트). 판정이 필요한 테스트는 EngineClient를 가짜로 바꾼다
     base-url: http://127.0.0.1:1
   admin:
-    key: test-admin-key
+    key: kingsejong-test-admin-key
   youtube:
     base-url: http://127.0.0.1:1
 

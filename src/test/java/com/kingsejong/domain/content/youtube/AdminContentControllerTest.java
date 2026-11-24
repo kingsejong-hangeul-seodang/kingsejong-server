@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /** 관리자: 유튜브로 콘텐츠 만들기. 유튜브는 가짜(MockitoBean). */
 class AdminContentControllerTest extends IntegrationTest {
 
-    private static final String KEY = "test-admin-key";
+    private static final String KEY = "kingsejong-test-admin-key";
 
     @MockitoBean
     YoutubeClient youtubeClient;
@@ -89,7 +89,7 @@ class AdminContentControllerTest extends IntegrationTest {
                 .andExpect(jsonPath("$.tasks.beginner.source").value("request"))
                 .andExpect(jsonPath("$.tasks.advanced.source").value("subtitle"))
                 .andExpect(jsonPath("$.taste.created").value(true))
-                .andExpect(jsonPath("$.seed.taste").value("yt:kpop:뉴진스"))
+                .andExpect(jsonPath("$.seed.taste").value(org.hamcrest.Matchers.startsWith("yt:kpop:")))
                 .andReturn().getResponse().getContentAsString());
         long contentId = created.get("contentId").asLong();
         flushAndClear();
@@ -170,6 +170,80 @@ class AdminContentControllerTest extends IntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001")))
                 .andExpect(jsonPath("$.items[?(@.id == " + id + ")]").doesNotExist());
         mockMvc.perform(delete("/api/v1/admin/contents/{id}", 999_999).header("X-Admin-Key", KEY)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 취향_이름은_정규화해서_같은_이름이면_재사용하고_시드_취향도_재사용한다() throws Exception {
+        String longName = "가".repeat(50);
+        String key = objectMapper.readTree(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kdrama\",\"taste\":\"" + longName + "\"}")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).at("/taste/seedKey").asText();
+        assertThat(key).startsWith("yt:kdrama:").hasSizeLessThanOrEqualTo(50);
+
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\" 뉴진스 \",\"startSec\":40,\"endSec\":48}")
+                .andExpect(jsonPath("$.taste.created").value(true));
+        String nfd = java.text.Normalizer.normalize("뉴진스", java.text.Normalizer.Form.NFD);
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"" + nfd + "\"}")
+                .andExpect(jsonPath("$.taste.created").value(false))
+                .andExpect(jsonPath("$.taste.name").value("뉴진스"));
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"하늘빛\"}")
+                .andExpect(jsonPath("$.taste.created").value(false))
+                .andExpect(jsonPath("$.taste.seedKey").value("artist-haneulbit"));
+    }
+
+    @Test
+    void 시작_초가_다르면_새_콘텐츠_소수점만_다르면_덮어쓴다_내린_뒤_다시_만들면_다시_보인다() throws Exception {
+        long a = id(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":40,\"endSec\":48}"));
+        long b = id(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":40.5,\"endSec\":48}"));
+        long c = id(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":39,\"endSec\":48}"));
+        assertThat(b).isEqualTo(a);
+        assertThat(c).isNotEqualTo(a);
+
+        mockMvc.perform(delete("/api/v1/admin/contents/{id}", a).header("X-Admin-Key", KEY)).andExpect(status().isNoContent());
+        flushAndClear();
+        assertThat(contentRepository.findById(a).orElseThrow().isActive()).isFalse();
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":40,\"endSec\":48}");
+        flushAndClear();
+        assertThat(contentRepository.findById(a).orElseThrow().isActive()).isTrue();
+    }
+
+    @Test
+    void 자막_한_줄이_200자를_넘으면_어절_단위로_자른다() throws Exception {
+        String longLine = "가나다라 ".repeat(50).trim(); // 249자
+        when(youtubeClient.fetch(anyString())).thenReturn(new YoutubeVideo("pSUydWEqKwE", "영상", "채널", null, true, 100,
+                new YoutubeVideo.Captions("ko", "asr", List.of(new YoutubeVideo.Line(10, 15, longLine)))));
+        String text = objectMapper.readTree(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kdrama\",\"taste\":\"작품\","
+                        + "\"tasks\":{\"beginner\":{\"target\":\"가나\"}}}")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).at("/lines/0/text").asText();
+        assertThat(text).hasSizeLessThanOrEqualTo(200).endsWith("가나다라");
+    }
+
+    @Test
+    void 자막을_직접_넣으면_번역과_함께_저장한다() throws Exception {
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"lines\":[{\"text\":\"안녕\",\"startSec\":1,\"endSec\":2}]}")
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.details[0].field").value("startSec"));
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,"
+                + "\"lines\":[{\"text\":\"안녕\",\"startSec\":1,\"endSec\":2}]}")
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.details[0].field").value("lines[0]"));
+        long id = id(importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,"
+                + "\"lines\":[{\"text\":\"오늘도 너를 기다렸어\",\"startSec\":11,\"endSec\":14,\"translation\":\"I waited for you again today\"}]}")
+                .andExpect(jsonPath("$.tasks.advanced.target").value("오늘도 너를 기다렸어"))
+                .andExpect(jsonPath("$.seed.lines[0].translation").value("I waited for you again today")));
+        flushAndClear();
+        mockMvc.perform(get("/api/v1/contents/{id}", id).param("stage", "advanced").header(HttpHeaders.AUTHORIZATION, bearer("DGU-0001")))
+                .andExpect(jsonPath("$.lines[0].translation").value("I waited for you again today"));
+    }
+
+    @Test
+    void 관리자_키는_16자_이상이어야_서버가_뜬다() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new com.kingsejong.global.auth.AdminInterceptor("short-key-123"))
+                .isInstanceOf(IllegalStateException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new com.kingsejong.global.auth.AdminInterceptor(null))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    private long id(ResultActions result) throws Exception {
+        return objectMapper.readTree(result.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
+                .get("contentId").asLong();
     }
 
     private ResultActions importVideo(String body) throws Exception {

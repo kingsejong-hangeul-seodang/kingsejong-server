@@ -14,8 +14,13 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import com.kingsejong.global.error.ErrorResponse;
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -30,10 +35,13 @@ import java.util.List;
 @Component
 public class YoutubeClient {
 
+    /** 자막 XML 상한. 영상 한 편 자막은 보통 100KB 안쪽. */
+    private static final int MAX_CAPTION_BYTES = 2 * 1024 * 1024;
     private static final String ANDROID_UA = "com.google.android.youtube/20.10.38 (Linux; U; Android 14)";
 
     private final RestClient restClient;
     private final String baseUrl;
+    private final URI base;
     private final ObjectMapper objectMapper;
 
     public YoutubeClient(@Value("${app.youtube.base-url:https://www.youtube.com}") String baseUrl,
@@ -46,6 +54,7 @@ public class YoutubeClient {
         factory.setReadTimeout(Duration.ofSeconds(10));
         this.restClient = RestClient.builder().requestFactory(factory).build();
         this.baseUrl = baseUrl.replaceAll("/+$", "");
+        this.base = URI.create(this.baseUrl);
         this.objectMapper = objectMapper;
     }
 
@@ -57,7 +66,7 @@ public class YoutubeClient {
         String thumbnail = oembed != null ? oembed.path("thumbnail_url").asText(null)
                 : "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg";
         if (title == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "유튜브에 없는 영상이에요");
+            throw notFound();
         }
         String length = player.path("videoDetails").path("lengthSeconds").asText(null);
         return new YoutubeVideo(videoId, title, channel, thumbnail, oembed != null,
@@ -65,15 +74,25 @@ public class YoutubeClient {
                 captions(player));
     }
 
-    /** 퍼가기가 막힌 영상은 oEmbed가 401·403 → null. 없는 영상(404·400)도 null (player에서 다시 확인). */
+    /**
+     * 퍼가기가 막힌 영상은 oEmbed가 401·403 → null (embeddable = false, 정보는 player에서).
+     * 없는 영상(400·404)은 422, 그 밖(429·5xx·연결 실패)은 502. 일시 오류를 "퍼가기 불가"로 저장하지 않는다.
+     */
     private JsonNode oembed(String videoId) {
         try {
             return restClient.get()
                     .uri(baseUrl + "/oembed?format=json&url={u}", "https://www.youtube.com/watch?v=" + videoId)
                     .retrieve().body(JsonNode.class);
         } catch (RestClientResponseException e) {
-            log.info("YouTube oEmbed {} for {}", e.getStatusCode().value(), videoId);
-            return null;
+            int code = e.getStatusCode().value();
+            log.info("YouTube oEmbed {} for {}", code, videoId);
+            if (code == 401 || code == 403) {
+                return null;
+            }
+            if (code == 400 || code == 404) {
+                throw notFound();
+            }
+            throw unavailable("oEmbed", e);
         } catch (RestClientException e) {
             throw unavailable("oEmbed", e);
         }
@@ -117,16 +136,53 @@ public class YoutubeClient {
         if (chosen == null || !chosen.path("baseUrl").isTextual()) {
             return null;
         }
+        URI uri = URI.create(chosen.get("baseUrl").asText());
+        if (!trustedCaptionHost(uri)) {
+            log.warn("YouTube caption url on unexpected host: {}", uri.getHost());
+            return null;
+        }
         try {
-            String xml = restClient.get().uri(URI.create(chosen.get("baseUrl").asText()))
+            String xml = restClient.get().uri(uri)
                     .header("User-Agent", ANDROID_UA)
-                    .retrieve().body(String.class);
+                    .exchange((req, res) -> {
+                        if (!res.getStatusCode().is2xxSuccessful()) {
+                            throw new BusinessException(ErrorCode.YOUTUBE_ERROR);
+                        }
+                        return readLimited(res.getBody());
+                    });
+            boolean auto = chosen != manual;
             List<YoutubeVideo.Line> lines = CaptionParser.parse(xml);
             return new YoutubeVideo.Captions(chosen.path("languageCode").asText(),
-                    chosen == manual ? "manual" : "asr", lines);
+                    auto ? "asr" : "manual", auto ? CaptionParser.mergeRollUp(lines) : lines);
         } catch (RestClientException e) {
             throw unavailable("captions", e);
         }
+    }
+
+    /** 응답이 준 주소를 그대로 부르므로 유튜브(또는 설정한 base-url) 호스트만. */
+    private boolean trustedCaptionHost(URI uri) {
+        String host = uri.getHost();
+        if (host == null) {
+            return false;
+        }
+        if (host.equalsIgnoreCase(base.getHost()) && uri.getScheme().equalsIgnoreCase(base.getScheme())) {
+            return true;
+        }
+        return "https".equalsIgnoreCase(uri.getScheme())
+                && (host.equalsIgnoreCase("youtube.com") || host.toLowerCase().endsWith(".youtube.com"));
+    }
+
+    private static String readLimited(InputStream in) throws IOException {
+        byte[] bytes = in.readNBytes(MAX_CAPTION_BYTES + 1);
+        if (bytes.length > MAX_CAPTION_BYTES) {
+            throw new BusinessException(ErrorCode.YOUTUBE_ERROR, "자막이 너무 커요");
+        }
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    private static BusinessException notFound() {
+        return new BusinessException(ErrorCode.INVALID_REQUEST,
+                List.of(new ErrorResponse.Detail("url", "유튜브에 없는 영상이에요")));
     }
 
     private static BusinessException unavailable(String step, RestClientException e) {

@@ -52,4 +52,27 @@ final class CaptionParser {
     private static double round(double sec) {
         return Math.round(sec * 100) / 100.0;
     }
+
+    /**
+     * 자동 자막(asr)은 같은 말이 겹쳐서 다시 나오는 모양(roll-up)이 흔하다.
+     * 앞 줄과 같거나 앞 줄을 포함하면 합치고(끝 시간 늘림), 앞 줄에 포함되면 버린다.
+     */
+    static List<YoutubeVideo.Line> mergeRollUp(List<YoutubeVideo.Line> lines) {
+        List<YoutubeVideo.Line> merged = new ArrayList<>();
+        for (YoutubeVideo.Line line : lines) {
+            if (!merged.isEmpty()) {
+                YoutubeVideo.Line prev = merged.get(merged.size() - 1);
+                if (line.text().contains(prev.text())) {
+                    merged.set(merged.size() - 1, new YoutubeVideo.Line(prev.startSec(), Math.max(prev.endSec(), line.endSec()), line.text()));
+                    continue;
+                }
+                if (prev.text().contains(line.text())) {
+                    merged.set(merged.size() - 1, new YoutubeVideo.Line(prev.startSec(), Math.max(prev.endSec(), line.endSec()), prev.text()));
+                    continue;
+                }
+            }
+            merged.add(line);
+        }
+        return merged;
+    }
 }

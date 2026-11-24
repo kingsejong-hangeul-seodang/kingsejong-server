@@ -95,4 +95,37 @@ class YoutubeClientTest {
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.YOUTUBE_ERROR);
     }
+
+    @Test
+    void oEmbed가_429면_퍼가기_불가로_보지_않고_502() {
+        oembedStatus = 429;
+        assertThatThrownBy(() -> new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE"))
+                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.YOUTUBE_ERROR);
+    }
+
+    @Test
+    void 없는_영상은_422_url() {
+        oembedStatus = 404;
+        assertThatThrownBy(() -> new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE"))
+                .isInstanceOfSatisfying(BusinessException.class, e -> {
+                    assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                    assertThat(e.getDetails().get(0).field()).isEqualTo("url");
+                });
+    }
+
+    @Test
+    void 자막_주소가_다른_호스트면_부르지_않는다() {
+        tracks = "[{\"languageCode\":\"ko\",\"baseUrl\":\"http://169.254.169.254/latest\"}]";
+        assertThat(new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE").captions()).isNull();
+    }
+
+    @Test
+    void 자동_자막의_겹친_줄은_합친다() {
+        assertThat(CaptionParser.mergeRollUp(java.util.List.of(
+                new YoutubeVideo.Line(1, 2, "오늘도"),
+                new YoutubeVideo.Line(1.5, 3, "오늘도 너를"),
+                new YoutubeVideo.Line(3, 4, "너를"),
+                new YoutubeVideo.Line(5, 6, "보고 싶어"))))
+                .containsExactly(new YoutubeVideo.Line(1, 4, "오늘도 너를"), new YoutubeVideo.Line(5, 6, "보고 싶어"));
+    }
 }

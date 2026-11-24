@@ -7,9 +7,12 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 /**
  * 유튜브 영상으로 콘텐츠 만들기. url·mode·taste만 넣으면 나머지는 자막에서 추천한다.
  * startSec·endSec는 둘 다 주거나 둘 다 빼고(자동), tasks는 난이도별로 직접 넣으면 추천값 대신 쓴다.
+ * lines를 주면 자막 대신 쓴다 (자막이 없거나 영어 번역을 넣을 때). 이때는 startSec·endSec도 같이 준다.
  * dryRun = true면 저장하지 않고 만들어질 모양만 돌려준다.
  */
 public record YoutubeImportRequest(
@@ -22,6 +25,7 @@ public record YoutubeImportRequest(
         @DecimalMin("0") Double startSec,
         @DecimalMin("0") Double endSec,
         @Valid Tasks tasks,
+        @Size(max = 30) List<@Valid Line> lines,
         boolean dryRun
 ) {
 
@@ -30,5 +34,12 @@ public record YoutubeImportRequest(
 
     /** target은 엔진 규칙대로 (초보 띄어쓰기 없는 단어, 중수 3어절 이하, 고수 20칸 이하). meaning은 초보 뜻. */
     public record Task(@NotBlank @Size(max = 20) String target, @Size(max = 100) String meaning) {
+    }
+
+    /** 직접 넣는 자막 한 줄. 시간은 영상 기준 초. */
+    public record Line(@NotBlank @Size(max = 200) String text,
+                       @NotNull @DecimalMin("0") Double startSec,
+                       @NotNull @DecimalMin("0") Double endSec,
+                       @Size(max = 300) String translation) {
     }
 }

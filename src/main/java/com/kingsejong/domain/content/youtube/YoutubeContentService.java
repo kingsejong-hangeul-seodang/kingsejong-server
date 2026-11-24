@@ -20,6 +20,7 @@ import com.kingsejong.global.error.ErrorResponse;
 import com.kingsejong.infra.youtube.YoutubeClient;
 import com.kingsejong.infra.youtube.YoutubeVideo;
 import com.kingsejong.infra.youtube.YoutubeVideoId;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -43,6 +44,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class YoutubeContentService {
 
+    private static final int MAX_LINE = 200;
     private static final Pattern QUOTED_TITLE = Pattern.compile("['‘’\"“”]([^'‘’\"“”]{1,40})['‘’\"“”]");
 
     private final YoutubeClient youtubeClient;
@@ -50,6 +52,7 @@ public class YoutubeContentService {
     private final TasteService tasteService;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
+    private final EntityManager entityManager;
 
     public YoutubePreviewResponse preview(String url) {
         YoutubeVideo video = youtubeClient.fetch(YoutubeVideoId.parse(url));
@@ -74,11 +77,38 @@ public class YoutubeContentService {
             throw invalid("endSec", "재생 구간은 끝 > 시작, 30초 이하예요");
         }
 
+        if (request.lines() != null && request.startSec() == null) {
+            throw invalid("startSec", "lines를 직접 넣으면 startSec·endSec도 같이 줘요");
+        }
+        if (request.lines() != null) {
+            for (int i = 0; i < request.lines().size(); i++) {
+                YoutubeImportRequest.Line l = request.lines().get(i);
+                if (l.endSec() < l.startSec() || l.startSec() < request.startSec() || l.endSec() > request.endSec()) {
+                    throw invalid("lines[" + i + "]", "줄 시간은 시작 ≤ 끝이고 재생 구간 안이어야 해요");
+                }
+            }
+        }
+
         // 1. 유튜브 (트랜잭션 밖: 최대 수십 초)
         YoutubeVideo video = youtubeClient.fetch(YoutubeVideoId.parse(request.url()));
-        List<YoutubeVideo.Line> all = video.captions() != null ? video.captions().lines() : List.of();
-        SubtitleStudyPicker.Window window = SubtitleStudyPicker.window(all, request.startSec(), request.endSec(), video.lengthSec())
-                .orElseThrow(() -> invalid("startSec", "한국어 자막에서 쓸 구간을 못 찾았어요. startSec·endSec와 tasks를 직접 넣어 주세요"));
+        SubtitleStudyPicker.Window window;
+        Map<Double, String> translations = new java.util.HashMap<>();
+        if (request.lines() != null) {
+            List<YoutubeVideo.Line> given = new ArrayList<>();
+            for (YoutubeImportRequest.Line l : request.lines()) {
+                given.add(new YoutubeVideo.Line(l.startSec(), l.endSec(), l.text().trim()));
+            }
+            window = new SubtitleStudyPicker.Window(request.startSec(), request.endSec(), given);
+            request.lines().forEach(l -> {
+                if (l.translation() != null) {
+                    translations.put(l.startSec(), l.translation().trim());
+                }
+            });
+        } else {
+            List<YoutubeVideo.Line> all = video.captions() != null ? video.captions().lines() : List.of();
+            window = SubtitleStudyPicker.window(all, request.startSec(), request.endSec(), video.lengthSec())
+                    .orElseThrow(() -> invalid("startSec", "한국어 자막에서 쓸 구간을 못 찾았어요. startSec·endSec와 tasks(또는 lines)를 직접 넣어 주세요"));
+        }
         if (video.lengthSec() != null && window.endSec() > video.lengthSec() + 1) {
             throw invalid("endSec", "영상 길이(" + video.lengthSec() + "초)를 넘어요");
         }
@@ -102,15 +132,20 @@ public class YoutubeContentService {
         }
 
         String title = request.title() != null ? request.title().trim() : shortTitle(video.title());
-        String tasteName = request.taste().trim();
+        String tasteName = TasteService.normalizeName(request.taste());
         String source = request.source() != null ? request.source().trim()
                 : request.mode() == Mode.KPOP ? tasteName + " - " + title : title;
         String seedKey = "yt:" + video.videoId() + ":" + (int) window.startSec();
         List<YoutubeImportResponse.Line> lines = window.lines().stream()
-                .map(l -> new YoutubeImportResponse.Line(l.text(), l.startSec(), l.endSec())).toList();
+                .map(l -> new YoutubeImportResponse.Line(fitLine(l.text()), l.startSec(), l.endSec(),
+                        translations.get(l.startSec())))
+                .toList();
 
-        // 3. 저장 (dryRun이면 안 함)
+        // 3. 저장 (dryRun이면 안 함). 관리자 만들기는 한 번에 하나씩 (같은 key·취향 동시 생성, sortOrder 겹침 방지)
         return transactionTemplate.execute(status -> {
+            if (!request.dryRun()) {
+                entityManager.createNativeQuery("select pg_advisory_xact_lock(hashtext('youtube-import'))").getSingleResult();
+            }
             TasteService.TasteRef taste = tasteService.findOrCreate(request.mode(), tasteName, request.dryRun());
             Long contentId = null;
             if (!request.dryRun()) {
@@ -127,7 +162,7 @@ public class YoutubeContentService {
                 for (int i = 0; i < lines.size(); i++) {
                     YoutubeImportResponse.Line line = lines.get(i);
                     contentLines.add(ContentLine.builder().text(line.text()).startSec(line.startSec())
-                            .endSec(line.endSec()).sortOrder(i + 1).build());
+                            .endSec(line.endSec()).translation(line.translation()).sortOrder(i + 1).build());
                 }
                 content.replaceLines(contentLines);
                 for (Map.Entry<Stage, YoutubeImportResponse.Task> e : tasks.entrySet()) {
@@ -160,6 +195,15 @@ public class YoutubeContentService {
         return title.length() > 40 ? title.substring(0, 40).trim() : title.trim();
     }
 
+    /** 자막 한 줄은 DB 200칸까지 (자동 자막은 줄이 합쳐져 길 수 있음). 어절 단위로 자른다. */
+    static String fitLine(String text) {
+        if (text.length() <= MAX_LINE) {
+            return text;
+        }
+        String fitted = SubtitleStudyPicker.fit(text, MAX_LINE);
+        return fitted.isEmpty() ? text.substring(0, MAX_LINE) : fitted;
+    }
+
     private static YoutubeImportRequest.Task given(YoutubeImportRequest.Tasks tasks, Stage stage) {
         if (tasks == null) {
             return null;
@@ -189,7 +233,12 @@ public class YoutubeContentService {
             seed.put("situation", request.situation());
         }
         ArrayNode lineArray = seed.putArray("lines");
-        lines.forEach(l -> lineArray.addObject().put("text", l.text()).put("startSec", l.startSec()).put("endSec", l.endSec()));
+        lines.forEach(l -> {
+            ObjectNode node = lineArray.addObject().put("text", l.text()).put("startSec", l.startSec()).put("endSec", l.endSec());
+            if (l.translation() != null) {
+                node.put("translation", l.translation());
+            }
+        });
         ArrayNode taskArray = seed.putArray("tasks");
         Map<Stage, YoutubeImportResponse.Task> ordered = new LinkedHashMap<>(tasks);
         ordered.forEach((stage, t) -> {
