@@ -141,7 +141,7 @@ public class ContentSeeder implements ApplicationRunner {
         }
     }
 
-    static void checkTarget(String title, Stage stage, String target) {
+    public static void checkTarget(String title, Stage stage, String target) {
         String where = "시드 콘텐츠 '" + title + "' (" + stage.getCode() + ") 정답 '" + target + "': ";
         if (target == null || target.isEmpty() || target.length() > MAX_TARGET_LENGTH
                 || !TARGET_PATTERN.matcher(target).matches()

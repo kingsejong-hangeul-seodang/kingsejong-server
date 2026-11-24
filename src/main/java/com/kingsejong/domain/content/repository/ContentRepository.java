@@ -15,8 +15,14 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 
     Optional<Content> findBySeedKey(String seedKey);
 
-    /** 시드에 없는 key의 콘텐츠 (숨길 대상). */
-    List<Content> findBySeedKeyNotInAndActiveTrue(Collection<String> seedKeys);
+    /** 시드에 없는 key의 콘텐츠 (숨길 대상). 관리자가 유튜브에서 만든 콘텐츠("yt:")는 시드가 건드리지 않는다. */
+    @Query("""
+            select c from Content c
+            where c.active = true and c.seedKey not in :seedKeys and c.seedKey not like 'yt:%'
+            """)
+    List<Content> findBySeedKeyNotInAndActiveTrue(@Param("seedKeys") Collection<String> seedKeys);
+
+    long countBySeedKeyStartingWith(String prefix);
 
     /** 그 모드에서 이 난이도로 쓸 글이 있는 보이는(active) 콘텐츠, 순서대로. */
     @Query("""

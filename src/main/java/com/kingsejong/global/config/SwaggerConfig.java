@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfig {
 
     private static final String BEARER = "bearerAuth";
+    private static final String ADMIN = "adminKey";
 
     @Bean
     public OpenAPI openAPI() {
@@ -24,10 +25,16 @@ public class SwaggerConfig {
                         .title("킹세종 한글서당 API")
                         .description("kingsejong-server API 명세")
                         .version("v1"))
-                .components(new Components().addSecuritySchemes(BEARER, new SecurityScheme()
-                        .type(SecurityScheme.Type.HTTP)
-                        .scheme("bearer")
-                        .bearerFormat("JWT")))
-                .addSecurityItem(new SecurityRequirement().addList(BEARER));
+                .components(new Components()
+                        .addSecuritySchemes(BEARER, new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT"))
+                        .addSecuritySchemes(ADMIN, new SecurityScheme()
+                                .type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.HEADER)
+                                .name("X-Admin-Key")))
+                .addSecurityItem(new SecurityRequirement().addList(BEARER))
+                .addSecurityItem(new SecurityRequirement().addList(ADMIN));
     }
 }

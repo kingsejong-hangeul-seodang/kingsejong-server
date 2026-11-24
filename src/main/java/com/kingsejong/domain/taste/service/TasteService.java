@@ -68,6 +68,33 @@ public class TasteService {
         return Set.copyOf(userTasteRepository.findActiveTasteIds(userId));
     }
 
+    /**
+     * 유튜브 콘텐츠를 만들 때 가수·작품 이름으로 취향을 찾고, 없으면 만든다 (key "yt:모드:이름", 시드가 지우지 않음).
+     * dryRun이면 만들지 않고 null id를 돌려준다.
+     */
+    @Transactional
+    public TasteRef findOrCreate(Mode mode, String name, boolean dryRun) {
+        checkMode(mode);
+        String trimmed = name.trim();
+        java.util.Optional<Taste> found = tasteRepository.findFirstByModeAndNameAndActiveTrue(mode, trimmed);
+        if (found.isPresent()) {
+            return new TasteRef(found.get().getId(), found.get().getSeedKey(), trimmed, false);
+        }
+        String key = "yt:" + mode.getCode() + ":" + trimmed;
+        if (dryRun) {
+            return new TasteRef(null, key, trimmed, true);
+        }
+        Taste taste = tasteRepository.findBySeedKey(key)
+                .orElseGet(() -> Taste.builder().seedKey(key).mode(mode).name(trimmed).sortOrder(1000).build());
+        taste.update(mode, trimmed, null, 1000);
+        tasteRepository.save(taste);
+        return new TasteRef(taste.getId(), key, trimmed, true);
+    }
+
+    /** created = 이번에 새로 만들었는지 (또는 dryRun이면 새로 만들 예정인지). */
+    public record TasteRef(Long id, String seedKey, String name, boolean created) {
+    }
+
     /** 콘텐츠 시드가 취향 key로 id를 찾을 때. 숨긴 취향은 없는 것으로 봐서 콘텐츠 시드가 기동에서 걸리게 한다. */
     public java.util.Optional<Long> findIdBySeedKey(String seedKey) {
         return tasteRepository.findBySeedKeyAndActiveTrue(seedKey).map(Taste::getId);
