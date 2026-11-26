@@ -61,7 +61,7 @@ app:
     connect-timeout: 2s
     read-timeout: 10s
     # 엔진 정답 획 사전을 만든 폰트 (응답의 font). 엔진이 동국체 사전으로 바꾸면 같이 바꾼다
-    reference-font: NotoSansKR-Light
+    reference-font: DONGGUK-UNIVERSITY
   admin:
     # 관리자 주소의 X-Admin-Key. 환경 변수 ADMIN_KEY 필수 (16자 이상). 기본값은 local·test 프로필에만 있다
     key: ${ADMIN_KEY}
