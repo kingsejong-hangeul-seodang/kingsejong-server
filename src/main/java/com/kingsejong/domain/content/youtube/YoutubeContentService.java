@@ -62,7 +62,7 @@ public class YoutubeContentService {
                 .orElse(null);
         return new YoutubePreviewResponse(video.videoId(), video.title(), video.channel(), video.thumbnailUrl(),
                 video.embeddable(), video.lengthSec(), video.captions() != null ? video.captions().kind() : null,
-                lines, suggestion);
+                video.captionsBlocked(), lines, suggestion);
     }
 
     public YoutubeImportResponse importContent(YoutubeImportRequest request) {
@@ -106,7 +106,9 @@ public class YoutubeContentService {
         } else {
             List<YoutubeVideo.Line> all = video.captions() != null ? video.captions().lines() : List.of();
             window = SubtitleStudyPicker.window(all, request.startSec(), request.endSec(), video.lengthSec())
-                    .orElseThrow(() -> invalid("startSec", "한국어 자막에서 쓸 구간을 못 찾았어요. startSec·endSec와 tasks(또는 lines)를 직접 넣어 주세요"));
+                    .orElseThrow(() -> invalid("startSec", video.captionsBlocked()
+                            ? "유튜브가 자막 요청을 막았어요. 잠시 뒤 다시 하거나 startSec·endSec·lines·tasks를 직접 넣어 주세요"
+                            : "한국어 자막에서 쓸 구간을 못 찾았어요. startSec·endSec와 tasks(또는 lines)를 직접 넣어 주세요"));
         }
         if (video.lengthSec() != null && window.endSec() > video.lengthSec() + 1) {
             throw invalid("endSec", "영상 길이(" + video.lengthSec() + "초)를 넘어요");

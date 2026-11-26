@@ -23,6 +23,7 @@ class YoutubeClientTest {
     private volatile String tracks;
     private volatile int captionStatus = 200;
     private volatile boolean privateVideo;
+    private volatile int playerStatus = 200;
     private String base;
 
     @BeforeEach
@@ -34,7 +35,7 @@ class YoutubeClientTest {
                 + "{\"languageCode\":\"en\",\"baseUrl\":\"" + base + "/api/timedtext?en\"}]";
         server.createContext("/oembed", ex -> respond(ex, oembedStatus,
                 "{\"title\":\"NewJeans 'Ditto' MV\",\"author_name\":\"HYBE LABELS\",\"thumbnail_url\":\"https://i.ytimg.com/x.jpg\"}"));
-        server.createContext("/youtubei/v1/player", ex -> respond(ex, 200, privateVideo
+        server.createContext("/youtubei/v1/player", ex -> respond(ex, playerStatus, playerStatus != 200 ? "<html>Sorry...</html>" : privateVideo
                 ? "{\"playabilityStatus\":{\"status\":\"LOGIN_REQUIRED\"}}" :
                 "{\"videoDetails\":{\"title\":\"Ditto\",\"author\":\"HYBE\",\"lengthSeconds\":\"333\"},"
                         + "\"captions\":{\"playerCaptionsTracklistRenderer\":{\"captionTracks\":" + tracks + "}}}"));
@@ -133,10 +134,11 @@ class YoutubeClientTest {
     }
 
     @Test
-    void 자막_요청이_실패하면_502() {
+    void 자막_요청이_실패하면_자막_없이_막혔다고_알린다() {
         captionStatus = 500;
-        assertThatThrownBy(() -> new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE"))
-                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.YOUTUBE_ERROR);
+        YoutubeVideo video = new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE");
+        assertThat(video.captionsBlocked()).isTrue();
+        assertThat(video.captions()).isNull();
     }
 
     @Test
@@ -154,5 +156,23 @@ class YoutubeClientTest {
                 new YoutubeVideo.Line(7, 8, "사랑해요"),
                 new YoutubeVideo.Line(8.1, 9, "사랑해요 정말"))))
                 .containsExactly(new YoutubeVideo.Line(1, 2, "사랑해요"), new YoutubeVideo.Line(7, 9, "사랑해요 정말"));
+    }
+
+    @Test
+    void 자막_API가_막혀도_영상_정보는_주고_막혔다고_알린다() {
+        playerStatus = 403;
+        YoutubeVideo video = new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE");
+        assertThat(video.title()).isEqualTo("NewJeans 'Ditto' MV");
+        assertThat(video.captionsBlocked()).isTrue();
+        assertThat(video.captions()).isNull();
+        assertThat(video.lengthSec()).isNull();
+    }
+
+    @Test
+    void 퍼가기도_막히고_자막_API도_막히면_502() {
+        playerStatus = 403;
+        oembedStatus = 401;
+        assertThatThrownBy(() -> new YoutubeClient(base, new ObjectMapper()).fetch("pSUydWEqKwE"))
+                .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.YOUTUBE_ERROR);
     }
 }

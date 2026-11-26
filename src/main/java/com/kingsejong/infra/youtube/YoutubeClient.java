@@ -66,9 +66,26 @@ public class YoutubeClient {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 영상 정보 + 한국어 자막. 자막 쪽(비공식 API)이 막혀도 oEmbed로 영상 정보를 알면 자막 없이(captionsBlocked) 돌려준다.
+     * 그때는 관리자가 구간·쓸 글·자막 줄을 직접 넣는다.
+     */
     public YoutubeVideo fetch(String videoId) {
         JsonNode oembed = oembed(videoId);
-        JsonNode player = player(videoId);
+        JsonNode player;
+        YoutubeVideo.Captions captions;
+        boolean blocked = false;
+        try {
+            player = player(videoId);
+            captions = captions(player);
+        } catch (BusinessException e) {
+            if (oembed == null || e.getErrorCode() != ErrorCode.YOUTUBE_ERROR) {
+                throw e;
+            }
+            player = objectMapper.createObjectNode();
+            captions = null;
+            blocked = true;
+        }
         String title = oembed != null ? oembed.path("title").asText(null) : player.path("videoDetails").path("title").asText(null);
         String channel = oembed != null ? oembed.path("author_name").asText(null) : player.path("videoDetails").path("author").asText(null);
         String thumbnail = oembed != null ? oembed.path("thumbnail_url").asText(null)
@@ -78,8 +95,7 @@ public class YoutubeClient {
         }
         String length = player.path("videoDetails").path("lengthSeconds").asText(null);
         return new YoutubeVideo(videoId, title, channel, thumbnail, oembed != null,
-                length != null && length.matches("\\d+") ? Integer.valueOf(length) : null,
-                captions(player));
+                length != null && length.matches("\\d+") ? Integer.valueOf(length) : null, captions, blocked);
     }
 
     /**

@@ -247,6 +247,22 @@ class AdminContentControllerTest extends IntegrationTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void 자막이_막혔으면_알려_주고_직접_넣은_자막으로_만든다() throws Exception {
+        when(youtubeClient.fetch(anyString())).thenReturn(new YoutubeVideo("pSUydWEqKwE", "영상", "채널", null, true, null, null, true));
+        mockMvc.perform(post("/api/v1/admin/youtube/preview").header("X-Admin-Key", KEY)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"url\":\"pSUydWEqKwE\"}"))
+                .andExpect(jsonPath("$.captionsBlocked").value(true))
+                .andExpect(jsonPath("$.suggestion").isEmpty());
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.details[0].message").value(org.hamcrest.Matchers.containsString("막았어요")));
+        importVideo("{\"url\":\"pSUydWEqKwE\",\"mode\":\"kpop\",\"taste\":\"뉴진스\",\"startSec\":10,\"endSec\":20,"
+                + "\"lines\":[{\"text\":\"오늘도 너를 기다렸어\",\"startSec\":11,\"endSec\":14}],\"tasks\":{\"beginner\":{\"target\":\"오늘\"}}}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.lines.length()").value(1));
+    }
+
     private long id(ResultActions result) throws Exception {
         return objectMapper.readTree(result.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString())
                 .get("contentId").asLong();
