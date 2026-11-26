@@ -103,7 +103,7 @@ class AdminContentControllerTest extends IntegrationTest {
                 .andExpect(jsonPath("$.task.target").value("고양이"))
                 .andExpect(jsonPath("$.task.meaning").value("cat"));
         mockMvc.perform(get("/api/v1/tastes").param("mode", "kpop").header(HttpHeaders.AUTHORIZATION, token))
-                .andExpect(jsonPath("$.items[?(@.name == '뉴진스')]").exists());
+                .andExpect(jsonPath("$.items[?(@.name == '뉴진스')].imageUrl").value("https://i.ytimg.com/vi/pSUydWEqKwE/hqdefault.jpg"));
         mockMvc.perform(get("/api/v1/contents").param("mode", "kpop").param("stage", "advanced").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(jsonPath("$.items[?(@.id == " + contentId + ")]").exists());
     }

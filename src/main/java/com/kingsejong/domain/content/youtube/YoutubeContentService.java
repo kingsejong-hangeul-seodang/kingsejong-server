@@ -147,7 +147,7 @@ public class YoutubeContentService {
             if (!request.dryRun()) {
                 jdbcTemplate.execute("select pg_advisory_xact_lock(hashtext('youtube-import'))");
             }
-            TasteService.TasteRef taste = tasteService.findOrCreate(request.mode(), tasteName, request.dryRun());
+            TasteService.TasteRef taste = tasteService.findOrCreate(request.mode(), tasteName, video.thumbnailUrl(), request.dryRun());
             Long contentId = null;
             if (!request.dryRun()) {
                 Content content = contentRepository.findBySeedKey(seedKey).orElse(null);

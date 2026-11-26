@@ -73,12 +73,17 @@ public class TasteService {
      * dryRun이면 만들지 않고 null id를 돌려준다.
      */
     @Transactional
-    public TasteRef findOrCreate(Mode mode, String name, boolean dryRun) {
+    /** imageUrl: 새로 만들 때(또는 유튜브로 만든 취향에 그림이 없을 때) 카드 그림. 영상 썸네일을 넣는다. */
+    public TasteRef findOrCreate(Mode mode, String name, String imageUrl, boolean dryRun) {
         checkMode(mode);
         String normalized = normalizeName(name);
         java.util.Optional<Taste> found = tasteRepository.findFirstByModeAndNameAndActiveTrue(mode, normalized);
         if (found.isPresent()) {
-            return new TasteRef(found.get().getId(), found.get().getSeedKey(), normalized, false);
+            Taste taste = found.get();
+            if (!dryRun && imageUrl != null && taste.getImageUrl() == null && taste.getSeedKey().startsWith("yt:")) {
+                taste.update(mode, taste.getName(), imageUrl, taste.getSortOrder());
+            }
+            return new TasteRef(taste.getId(), taste.getSeedKey(), normalized, false);
         }
         // key 길이(50) 안에 들게 이름 대신 해시: "yt:kdrama:" + 12자
         String key = "yt:" + mode.getCode() + ":" + sha1(normalized).substring(0, 12);
@@ -87,7 +92,7 @@ public class TasteService {
         }
         Taste taste = tasteRepository.findBySeedKey(key)
                 .orElseGet(() -> Taste.builder().seedKey(key).mode(mode).name(normalized).sortOrder(1000).build());
-        taste.update(mode, normalized, null, 1000);
+        taste.update(mode, normalized, imageUrl, 1000);
         tasteRepository.save(taste);
         return new TasteRef(taste.getId(), key, normalized, true);
     }
