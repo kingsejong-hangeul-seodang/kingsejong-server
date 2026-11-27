@@ -22,6 +22,7 @@ public enum ErrorCode {
     ENGINE_ERROR(HttpStatus.BAD_GATEWAY, "교정 엔진이 오류를 돌려줬어요"),
     ENGINE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "교정 엔진에 연결할 수 없어요"),
     ENGINE_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "교정 엔진이 제한 시간 안에 답하지 않았어요"),
+    YOUTUBE_ERROR(HttpStatus.BAD_GATEWAY, "유튜브에서 정보를 가져오지 못했어요"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했어요");
 
     private final HttpStatus status;

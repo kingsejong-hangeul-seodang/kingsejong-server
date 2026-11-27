@@ -43,7 +43,7 @@ public class ReferenceService {
     private final Map<String, JsonNode> found = new ConcurrentHashMap<>();
     private final Map<String, Instant> missingUntil = new ConcurrentHashMap<>();
 
-    @Value("${app.engine.reference-font:NotoSansKR-Light}")
+    @Value("${app.engine.reference-font:DONGGUK-UNIVERSITY}")
     private String font;
 
     /** 요청 순서대로(같은 글자는 한 번). complete = 요청한 글자를 모두 찾았는지 (아니면 브라우저 캐시를 안 붙임). */

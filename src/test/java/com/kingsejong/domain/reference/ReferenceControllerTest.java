@@ -37,7 +37,7 @@ class ReferenceControllerTest extends IntegrationTest {
         mockMvc.perform(get("/api/v1/reference/strokes").param("chars", "바다바").header(HttpHeaders.AUTHORIZATION, token))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=86400, private"))
-                .andExpect(jsonPath("$.font").value("NotoSansKR-Light"))
+                .andExpect(jsonPath("$.font").value("DONGGUK-UNIVERSITY"))
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].char").value("바"))
                 .andExpect(jsonPath("$.items[1].char").value("다"))
