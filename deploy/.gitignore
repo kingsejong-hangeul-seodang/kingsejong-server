@@ -1,0 +1,6 @@
+.env
+backups/
+engine-data/fonts/*
+engine-data/extracted/*
+!engine-data/fonts/.gitkeep
+!engine-data/extracted/.gitkeep

@@ -1,0 +1,16 @@
+# HTTPS 인증서는 Caddy가 Let's Encrypt에서 자동으로 받는다 (80·443이 열려 있어야 함).
+# 도메인이 없으면 공인 IP로 sslip.io 주소를 쓴다: 152.67.1.2 → 152-67-1-2.sslip.io
+{$API_DOMAIN} {
+	encode gzip
+
+	# 상태 확인은 /api/v1/health 만 연다 (actuator는 밖에 안 보임)
+	@internal path /actuator /actuator/*
+	respond @internal 404
+
+	reverse_proxy server:8080
+
+	log {
+		output stdout
+		format console
+	}
+}
